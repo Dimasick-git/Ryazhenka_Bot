@@ -1,4 +1,3 @@
-[project]
 name = "Ryazhenka_Bot"
 version = "0.1.0"
 description = "Helper for OC"
@@ -7,4 +6,5 @@ dependencies = [
     "aiogram>=3.22.0",
     "fuzzywuzzy>=0.18.0",
     "python-levenshtein>=0.27.1",
+
 ]
