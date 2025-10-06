@@ -10,7 +10,8 @@
     "Atmosphère официальная": "https://github.com/Atmosphere-NX/Atmosphere/releases",
     "Hekate (загрузчик)": "https://github.com/CTCaer/hekate/releases",
     "Sigpatches (патчи)": "https://github.com/ITotalJustice/patches/releases",
-    "DeepSea (CFW пакет)": "https://github.com/Team-Neptune/DeepSea/releases"
+    "DeepSea (CFW пакет)": "https://github.com/Team-Neptune/DeepSea/releases",
+    "Ryazhenka": "https://github.com/Dimasick-git/Ryzhenka/releases/tag/v4.0.0"
   },
   "🔋 Battery Fix (калибровка)": {
     "Battery Desync Fix NX": "https://github.com/CTCaer/battery_desync_fix_nx",
@@ -433,7 +434,24 @@
     "ROM Hacks": "https://www.gamebrew.org/wiki/List_of_Switch_rom_hacks",
     "Layered FS Mods": "https://github.com/topics/switch-mods"
   },
-  "🆕 Авто-гайды": {
+  "YouTube - Видео": {
+    "Mig switch распаковка ": "https://www.youtube.com/watch?v=pgeMANPbcqM",
+    "Обновление 20.5.0. Можно ли обновлять?": "https://www.youtube.com/watch?v=-yX6JG-Pxk4",
+    "Как сделать эмунанд всего 7гб ": "https://www.youtube.com/watch?v=C5AuY4AaCbM",
+    "Что не так со switch 2?": "https://www.youtube.com/watch?v=gavsB5NzAQQ",
+    "Как избежать бана на Nintendo Switch": "https://www.youtube.com/watch?v=Ht7Yf0GVui8",
+    "Ошибка атмосферы на новых Nintendo switch ": "https://www.youtube.com/watch?v=8Hh9j6c-E8A",
+    "Фишки забаненного switch 2": "https://www.youtube.com/watch?v=uDhTdhvh1vk",
+    "Что может забаненный switch 2?": "https://www.youtube.com/watch?v=LEYXwcesadY",
+    "Как настроить Retroarch на Playstation 4": "https://www.youtube.com/watch?v=Pj6wnM7bNck",
+    "Как сделать автозакрытие окна в GoldHEN": "https://www.youtube.com/shorts/7n0HNs-zUp4",
+    "Как обновить GoldHEN на прошитой Playstation 4 версия ПО 9.60 12.02": "https://www.youtube.com/watch?v=fNOabyujEfg",
+    "Как настроить Retroarch на Nintendo switch ": "https://www.youtube.com/watch?v=BlrP6c6x9ic",
+    "Обновление 20.4.0 стоит ли обновлять?": "https://www.youtube.com/watch?v=ox9wdkTCPQE",
+    "Как настроить FTP-сервер на PlayStation 4": "https://www.youtube.com/watch?v=Q0Pfh3N7KO4",
+    "Магазин приложений для прошитой Playstation 4": "https://www.youtube.com/watch?v=7r_E5rtv3tU"
+  },
+  "Архив - Авто-гайды": {
     "Авто-гайд 0001": "https://duckduckgo.com/?q=%D0%90%D0%B2%D1%82%D0%BE-%D0%B3%D0%B0%D0%B9%D0%B4%200001%20Nintendo%20Switch%20site%3Agithub.com%20OR%20site%3Arentry.org%20OR%20site%3Agithub.io%20OR%20site%3Agamebrew.org%20OR%20site%3Agbatemp.net",
     "Авто-гайд 0002": "https://duckduckgo.com/?q=%D0%90%D0%B2%D1%82%D0%BE-%D0%B3%D0%B0%D0%B9%D0%B4%200002%20Nintendo%20Switch%20site%3Agithub.com%20OR%20site%3Arentry.org%20OR%20site%3Agithub.io%20OR%20site%3Agamebrew.org%20OR%20site%3Agbatemp.net",
     "Авто-гайд 0003": "https://duckduckgo.com/?q=%D0%90%D0%B2%D1%82%D0%BE-%D0%B3%D0%B0%D0%B9%D0%B4%200003%20Nintendo%20Switch%20site%3Agithub.com%20OR%20site%3Arentry.org%20OR%20site%3Agithub.io%20OR%20site%3Agamebrew.org%20OR%20site%3Agbatemp.net",
@@ -1094,22 +1112,5 @@
     "Авто-гайд 0658": "https://duckduckgo.com/?q=%D0%90%D0%B2%D1%82%D0%BE-%D0%B3%D0%B0%D0%B9%D0%B4%200658%20Nintendo%20Switch%20site%3Agithub.com%20OR%20site%3Arentry.org%20OR%20site%3Agithub.io%20OR%20site%3Agamebrew.org%20OR%20site%3Agbatemp.net",
     "Авто-гайд 0659": "https://duckduckgo.com/?q=%D0%90%D0%B2%D1%82%D0%BE-%D0%B3%D0%B0%D0%B9%D0%B4%200659%20Nintendo%20Switch%20site%3Agithub.com%20OR%20site%3Arentry.org%20OR%20site%3Agithub.io%20OR%20site%3Agamebrew.org%20OR%20site%3Agbatemp.net",
     "Авто-гайд 0660": "https://duckduckgo.com/?q=%D0%90%D0%B2%D1%82%D0%BE-%D0%B3%D0%B0%D0%B9%D0%B4%200660%20Nintendo%20Switch%20site%3Agithub.com%20OR%20site%3Arentry.org%20OR%20site%3Agithub.io%20OR%20site%3Agamebrew.org%20OR%20site%3Agbatemp.net"
-  },
-  "YouTube - Видео": {
-    "Mig switch распаковка ": "https://www.youtube.com/watch?v=pgeMANPbcqM",
-    "Обновление 20.5.0. Можно ли обновлять?": "https://www.youtube.com/watch?v=-yX6JG-Pxk4",
-    "Как сделать эмунанд всего 7гб ": "https://www.youtube.com/watch?v=C5AuY4AaCbM",
-    "Что не так со switch 2?": "https://www.youtube.com/watch?v=gavsB5NzAQQ",
-    "Как избежать бана на Nintendo Switch": "https://www.youtube.com/watch?v=Ht7Yf0GVui8",
-    "Ошибка атмосферы на новых Nintendo switch ": "https://www.youtube.com/watch?v=8Hh9j6c-E8A",
-    "Фишки забаненного switch 2": "https://www.youtube.com/watch?v=uDhTdhvh1vk",
-    "Что может забаненный switch 2?": "https://www.youtube.com/watch?v=LEYXwcesadY",
-    "Как настроить Retroarch на Playstation 4": "https://www.youtube.com/watch?v=Pj6wnM7bNck",
-    "Как сделать автозакрытие окна в GoldHEN": "https://www.youtube.com/shorts/7n0HNs-zUp4",
-    "Как обновить GoldHEN на прошитой Playstation 4 версия ПО 9.60 12.02": "https://www.youtube.com/watch?v=fNOabyujEfg",
-    "Как настроить Retroarch на Nintendo switch ": "https://www.youtube.com/watch?v=BlrP6c6x9ic",
-    "Обновление 20.4.0 стоит ли обновлять?": "https://www.youtube.com/watch?v=ox9wdkTCPQE",
-    "Как настроить FTP-сервер на PlayStation 4": "https://www.youtube.com/watch?v=Q0Pfh3N7KO4",
-    "Магазин приложений для прошитой Playstation 4": "https://www.youtube.com/watch?v=7r_E5rtv3tU"
   }
 }
