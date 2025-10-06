@@ -10,6 +10,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, CommandObject
 from fuzzywuzzy import fuzz, process
+from Levenshtein import distance as levenshtein_distance
 
 def _load_dotenv(path='.env'):
     """Simple .env loader: set variables from a .env file if they are not already in os.environ."""
@@ -639,24 +640,36 @@ async def send_guide(message: types.Message, command: CommandObject):
 
     # build mapping for process.extract
     titles = [c[0] for c in choices]
-    try:
-        raw_results = process.extract(query, titles, scorer=fuzz.token_set_ratio, limit=5)
-    except Exception as e:
-        logging.exception(f"Fuzzy search failed: {e}")
-        raw_results = []
-
-    # normalize results to list of (title, score)
+    # We'll compute a combined score per title to be more tolerant.
     results = []
-    for r in raw_results:
-        if not r:
-            continue
-        if isinstance(r, tuple) or isinstance(r, list):
-            if len(r) >= 2:
-                results.append((r[0], r[1]))
-            else:
-                results.append((r[0], 0))
+    q_lower = query.lower()
+    for t in titles:
+        t_lower = t.lower()
+        # exact substring match -> high score
+        if q_lower in t_lower or t_lower in q_lower:
+            score = 95
         else:
-            results.append((r, 0))
+            try:
+                s1 = fuzz.token_set_ratio(q_lower, t_lower)
+                s2 = fuzz.partial_ratio(q_lower, t_lower)
+                # combined weighted score
+                score = int((s1 * 0.7) + (s2 * 0.3))
+            except Exception:
+                score = 0
+            # short-typo fallback using levenshtein distance
+            if score < 60 and len(q_lower) <= 8 and len(t_lower) <= 30:
+                try:
+                    d = levenshtein_distance(q_lower, t_lower)
+                    # convert distance to rough similarity
+                    maxlen = max(1, max(len(q_lower), len(t_lower)))
+                    lev_score = int((1 - (d / maxlen)) * 100)
+                    # take the max of both
+                    score = max(score, lev_score)
+                except Exception:
+                    pass
+        results.append((t, score))
+    # sort by score desc
+    results.sort(key=lambda x: x[1], reverse=True)
 
     if not results:
         await message.reply(
@@ -683,7 +696,7 @@ async def send_guide(message: types.Message, command: CommandObject):
     # if no high-score match, show top suggestions with buttons
     suggestions = []
     for title, score in results:
-        # suggest matches >= 55% as requested (was 40)
+        # suggest matches >= 55% as requested
         if score < 55:
             continue
         entry = next((c for c in choices if c[0] == title), None)
@@ -835,6 +848,13 @@ async def main():
 
         asyncio.create_task(background_resolver())
 
+    # Remove any webhook (avoids TelegramConflictError when switching from webhook to long polling)
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+    except Exception:
+        logging.exception("Failed to delete webhook (may be none)")
+
+    # Start polling. If another polling instance exists, aiogram will retry internally.
     await dp.start_polling(bot, skip_updates=True)
 
 if __name__ == "__main__":
