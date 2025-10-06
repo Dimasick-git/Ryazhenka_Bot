@@ -8,7 +8,7 @@ Quick Railway deployment
 
 3) Configure Environment Variables (Project Settings -> Variables)
    - Add these keys and values (copy from `.env.example`):
-     BOT_TOKEN = <your_new_bot_token>
+   BOT_TOKEN = 8404504215:AAEnVW96T4Jg7DzC5hpwYwuPDiQluChkMMk
      YT_CHANNELS = chipovchik
      GITHUB_REPO = Dimasick-git/Ryzhenka
      ADMIN_IDS = 2072467087

@@ -11,10 +11,32 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, CommandObject
 from fuzzywuzzy import fuzz, process
 
+def _load_dotenv(path='.env'):
+    """Simple .env loader: set variables from a .env file if they are not already in os.environ."""
+    try:
+        if not os.path.exists(path):
+            return
+        with open(path, 'r', encoding='utf-8') as f:
+            for ln in f:
+                ln = ln.strip()
+                if not ln or ln.startswith('#') or '=' not in ln:
+                    continue
+                k, v = ln.split('=', 1)
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except Exception:
+        pass
+
+
+# Load .env so local runs pick up values without external deps
+_load_dotenv()
+
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 # support multiple channels (comma-separated). Items can be channel_id (starts with UC) or username
-YT_CHANNELS = [c.strip() for c in os.environ.get("YT_CHANNELS", "chipovchik").split(",") if c.strip()]
+YT_CHANNELS = [c.strip() for c in os.environ.get("YT_CHANNELS", "chipovchik,UCjtFvdgneo1vhSAggJUJeMw").split(",") if c.strip()]
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "Dimasick-git/Ryzhenka")
 SYNC_INTERVAL_SECONDS = int(os.environ.get("SYNC_INTERVAL_SECONDS", 3600))
 admin_env = os.environ.get("ADMIN_IDS", "")
@@ -142,26 +164,77 @@ async def resolve_channel_id(identifier: str) -> str:
     if not identifier:
         return None
     identifier = identifier.strip()
+    # If identifier looks like a direct channel id
     if identifier.startswith("UC"):
         return identifier
+    # If identifier is a full URL, extract path
+    if identifier.startswith('http') or 'youtube.com' in identifier:
+        try:
+            parsed = urllib.parse.urlparse(identifier)
+            path = parsed.path or ''
+            # /channel/UCxxxx
+            m = re.search(r'/channel/(UC[0-9A-Za-z_-]+)', path)
+            if m:
+                return m.group(1)
+            # /@handle or /c/name or /user/name
+            m2 = re.search(r'/@([^/]+)', path)
+            if m2:
+                identifier = m2.group(1)
+            else:
+                m3 = re.search(r'/c/([^/]+)', path)
+                if m3:
+                    identifier = m3.group(1)
+                else:
+                    m4 = re.search(r'/user/([^/]+)', path)
+                    if m4:
+                        identifier = m4.group(1)
+        except Exception:
+            pass
+    # If identifier starts with @, treat as handle
+    if identifier.startswith('@'):
+        identifier = identifier[1:]
     # try user RSS (some channels expose ?user=username)
     try:
         feed_url = f"https://www.youtube.com/feeds/videos.xml?user={identifier}"
         text = await fetch_xml(feed_url)
         if text and '<entry>' in text:
-            # success: need to find channel id in feed header
-            m = re.search(r'channelId="(UC[0-9A-Za-z_-]+)"', text)
+            # try to extract <yt:channelId>...</yt:channelId>
+            m = re.search(r'<yt:channelId>(UC[0-9A-Za-z_-]+)</yt:channelId>', text)
             if m:
+                logging.info(f"Resolved channel id from user RSS for {identifier}: {m.group(1)}")
                 return m.group(1)
-    except Exception:
-        pass
-    # fallback: fetch channel page and look for "channelId":"UC..."
+    except Exception as e:
+        logging.debug(f"User RSS lookup failed for {identifier}: {e}")
+    # fallback: fetch channel page and look for "channelId":"UC..." or meta tags
     try:
         url = f"https://www.youtube.com/{identifier}"
         html = await fetch_xml(url)
         m = re.search(r'"channelId"\s*:\s*"(UC[0-9A-Za-z_-]+)"', html)
         if m:
+            logging.info(f"Resolved channel id from HTML for {identifier}: {m.group(1)}")
             return m.group(1)
+        # try alternative: look for /channel/UC... in links
+        m2 = re.search(r'/channel/(UC[0-9A-Za-z_-]+)', html)
+        if m2:
+            logging.info(f"Resolved channel id from HTML link for {identifier}: {m2.group(1)}")
+            return m2.group(1)
+    except Exception as e:
+        logging.debug(f"HTML lookup failed for {identifier}: {e}")
+
+    # As a last resort try a DuckDuckGo search for the channel and look for /channel/ links
+    try:
+        ddg_url = 'https://duckduckgo.com/html/'
+        q = f"{identifier} site:youtube.com/channel"
+        async with aiohttp.ClientSession() as session:
+            async with session.post(ddg_url, data={'q': q}, timeout=20) as resp:
+                text = await resp.text()
+                m = re.search(r'href="([^"]*/channel/(UC[0-9A-Za-z_-]+)[^"]*)"', text)
+                if m:
+                    # extract the channel id
+                    mm = re.search(r'/channel/(UC[0-9A-Za-z_-]+)', m.group(1))
+                    if mm:
+                        logging.info(f"Resolved channel id via DDG for {identifier}: {mm.group(1)}")
+                        return mm.group(1)
     except Exception:
         pass
     return None
@@ -261,7 +334,9 @@ async def sync_sources():
                 resolved = await resolve_channel_id(ch)
                 if resolved:
                     cid = resolved
+            logging.info(f"Fetching YouTube for channel identifier '{ch}' resolved to '{cid}'")
             yt_entries = await fetch_youtube_videos(cid) if cid else []
+            logging.info(f"Fetched {len(yt_entries)} entries from YouTube channel {cid}")
             if yt_entries:
                 added = merge_entries_into_category('YouTube - Видео', yt_entries)
                 total_added += added
@@ -389,13 +464,37 @@ async def send_guide(message: types.Message, command: CommandObject):
 
     # build mapping for process.extract
     titles = [c[0] for c in choices]
-    results = process.extract(query, titles, scorer=fuzz.token_set_ratio, limit=5)
+    try:
+        raw_results = process.extract(query, titles, scorer=fuzz.token_set_ratio, limit=5)
+    except Exception as e:
+        logging.exception(f"Fuzzy search failed: {e}")
+        raw_results = []
 
-    # results: list of (title, score)
-    best_title, best_score = results[0][0], results[0][1]
-    # find corresponding entry
-    matched = [c for c in choices if c[0] == best_title]
-    matched = matched[0] if matched else None
+    # normalize results to list of (title, score)
+    results = []
+    for r in raw_results:
+        if not r:
+            continue
+        if isinstance(r, tuple) or isinstance(r, list):
+            if len(r) >= 2:
+                results.append((r[0], r[1]))
+            else:
+                results.append((r[0], 0))
+        else:
+            results.append((r, 0))
+
+    if not results:
+        await message.reply(
+            "❌ Не нашёл гайд. Попробуйте:\n"
+            "• /guide atmosphere\n"
+            "• /guide battery\n"
+            "• /guide emunand\n\n"
+            "Или используйте /all чтобы увидеть все категории"
+        )
+        return
+
+    best_title, best_score = results[0]
+    matched = next((c for c in choices if c[0] == best_title), None)
 
     if matched and best_score >= 75:
         title, category, url = matched
@@ -406,7 +505,7 @@ async def send_guide(message: types.Message, command: CommandObject):
         )
         return
 
-    # if no high-score match, show top 3 suggestions with buttons
+    # if no high-score match, show top suggestions with buttons
     suggestions = []
     for title, score in results:
         if score < 40:
@@ -418,7 +517,7 @@ async def send_guide(message: types.Message, command: CommandObject):
     if suggestions:
         text = f"🤔 Ничего точного не найдено, но есть похожие варианты:\n\n"
         kb = InlineKeyboardMarkup(inline_keyboard=[])
-        for t, cat, url, score in suggestions:
+        for t, cat, url, score in suggestions[:10]:
             text += f"*{t}* — {cat} (score {score})\n"
             kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {t}", url=url)])
         await message.reply(text, parse_mode="Markdown", reply_markup=kb)
