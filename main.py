@@ -35,6 +35,32 @@ _load_dotenv()
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
+# Robust fallback: try to read BOT_TOKEN directly from .env if loader missed it
+def _read_key_from_env_file(path: str, key: str):
+    try:
+        if not os.path.exists(path):
+            return None
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            for ln in f:
+                ln = ln.strip()
+                if not ln or ln.startswith('#') or '=' not in ln:
+                    continue
+                k, v = ln.split('=', 1)
+                if k.strip() == key:
+                    val = v.strip().strip('"').strip("'")
+                    if val:
+                        return val
+    except Exception:
+        return None
+    return None
+
+if not BOT_TOKEN:
+    # attempt to read explicit BOT_TOKEN from .env (lenient parse)
+    token_from_env = _read_key_from_env_file('.env', 'BOT_TOKEN')
+    if token_from_env:
+        os.environ['BOT_TOKEN'] = token_from_env
+        BOT_TOKEN = token_from_env
+
 # support multiple channels (comma-separated). Items can be channel_id (starts with UC) or username
 YT_CHANNELS = [c.strip() for c in os.environ.get("YT_CHANNELS", "UCjtFvdgneo1vhSAggJUJeMw").split(",") if c.strip()]
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "Dimasick-git/Ryzhenka")
@@ -50,8 +76,22 @@ if not ADMIN_IDS:
         ADMIN_IDS = []
 
 if not BOT_TOKEN:
-    print("❌ Ошибка: BOT_TOKEN не найден в переменных окружения!")
-    print("Установите переменную окружения BOT_TOKEN с токеном от @BotFather")
+    # If a .env.example exists but no .env, create a .env file to help the user
+    try:
+        if not os.path.exists('.env') and os.path.exists('.env.example'):
+            with open('.env.example', 'r', encoding='utf-8') as sf:
+                content = sf.read()
+            with open('.env', 'w', encoding='utf-8') as df:
+                df.write(content)
+            print("ℹ️ Файл .env создан из .env.example. Пожалуйста, отредактируйте .env и вставьте ваш BOT_TOKEN.")
+            print("После добавления токена запустите бота снова.")
+        else:
+            print("❌ Ошибка: BOT_TOKEN не найден в переменных окружения!")
+            print("Установите переменную окружения BOT_TOKEN с токеном от @BotFather или заполните файл .env")
+    except Exception:
+        print("❌ Ошибка: BOT_TOKEN не найден в переменных окружения и не удалось создать .env автоматически.")
+        print("Установите BOT_TOKEN вручную в переменных окружения или в файле .env")
+    # stop here because without a token the bot cannot operate
     exit(1)
 
 bot = Bot(token=BOT_TOKEN)
@@ -643,7 +683,8 @@ async def send_guide(message: types.Message, command: CommandObject):
     # if no high-score match, show top suggestions with buttons
     suggestions = []
     for title, score in results:
-        if score < 40:
+        # suggest matches >= 55% as requested (was 40)
+        if score < 55:
             continue
         entry = next((c for c in choices if c[0] == title), None)
         if entry:
