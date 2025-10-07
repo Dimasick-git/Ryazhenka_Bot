@@ -32,6 +32,9 @@ def _load_dotenv(path='.env'):
 # Load .env so local runs pick up values without external deps
 _load_dotenv()
 
+YT_CHANNELS = [c.strip() for c in os.environ.get("YT_CHANNELS", "").split(",") if c.strip()]
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "")
+
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 # Robust fallback: try to read BOT_TOKEN directly from .env if loader missed it
