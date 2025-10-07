@@ -37,6 +37,21 @@ GITHUB_REPO = os.environ.get("GITHUB_REPO", "")
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
+# Admin IDs may be provided as comma-separated env var; default to empty list
+try:
+    ADMIN_IDS = [int(x) for x in os.environ.get("ADMIN_IDS", "").split(",") if x.strip()]
+except Exception:
+    ADMIN_IDS = []
+
+# Optional GitHub token for API usage
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+
+# Background sync interval (seconds), default to 1 hour
+try:
+    SYNC_INTERVAL_SECONDS = int(os.environ.get("SYNC_INTERVAL_SECONDS", "3600"))
+except Exception:
+    SYNC_INTERVAL_SECONDS = 3600
+
 # Robust fallback: try to read BOT_TOKEN directly from .env if loader missed it
 def _read_key_from_env_file(path: str, key: str):
     try:
@@ -609,11 +624,10 @@ async def handle_category(callback_query: types.CallbackQuery):
     ])
     
     try:
-        try:
-            await callback_query.message.edit_text(text, disable_web_page_preview=True, reply_markup=kb_nav)
-        except Exception:
-            await callback_query.message.answer(text, disable_web_page_preview=True, reply_markup=kb_nav)
-    
+        await callback_query.message.edit_text(text, disable_web_page_preview=True, reply_markup=kb_nav)
+    except Exception:
+        await callback_query.message.answer(text, disable_web_page_preview=True, reply_markup=kb_nav)
+
     await callback_query.answer()
 
 @dp.callback_query(F.data == "back_to_categories")
