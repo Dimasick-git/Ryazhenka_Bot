@@ -587,9 +587,11 @@ def create_categories_keyboard():
 async def start(message: types.Message):
     await message.reply(
         "👋 Привет! Я бот-помощник по прошивке Nintendo Switch.\n\n"
-        "🔍 Команды:\n"
+        "🔍 Часто используемые команды:\n"
         "• /guide <тема> — найти гайд (fuzzy search)\n"
-        "• /all — показать все категории\n\n"
+        "• /aiguide <текст> — AI-подобный поиск по гайдам (локально)\n"
+        "• /all — показать все категории\n"
+        "• /help — полный список команд\n\n"
         "📚 Выберите категорию ниже:",
         reply_markup=create_categories_keyboard()
     )
@@ -837,6 +839,25 @@ async def admin_help(message: types.Message):
     )
     await message.reply(text)
 
+
+@dp.message(Command("help"))
+async def help_command(message: types.Message):
+    text = (
+        "📘 Полный список команд:\n"
+        "• /start — Приветствие и быстрые ссылки\n"
+        "• /all — Показать все категории\n"
+        "• /guide <тема> — Найти гайд (fuzzy search)\n"
+        "• /aiguide <текст> — AI-подобный поиск (локально, быстрый)\n"
+        "• /sync — (админ) Синхронизация источников\n"
+        "• /purge_autoguides — (админ) Переместить автогайды в архив\n"
+        "• /cleanup_duplicates — (админ) Удалить дубликаты\n"
+        "• /recommend — Показать репозитории автора\n"
+        "• /status — (админ) Статус бота и webhook\n"
+        "• /restart_polling — (админ) Удалить webhook и предложить перезапуск\n"
+        "• /admin_help — Список админ-команд\n"
+    )
+    await message.reply(text)
+
 def _tokenize(text: str) -> list:
     if not text:
         return []
@@ -867,6 +888,51 @@ def _cosine_sim(a: dict, b: dict) -> float:
     if norm_a == 0 or norm_b == 0:
         return 0.0
     return dot / (norm_a * norm_b)
+
+
+def _vec_dot(a, b):
+    try:
+        return float(sum(x * y for x, y in zip(a, b)))
+    except Exception:
+        return 0.0
+
+
+def _vec_norm(a):
+    try:
+        return float(sum(x * x for x in a) ** 0.5)
+    except Exception:
+        return 0.0
+
+
+# small synonyms/aliases table to map common typos or shorthand -> canonical form
+SYNONYMS = {
+    'batter': 'battery',
+    'batery': 'battery',
+    'emunand': 'emu nand',
+    'emunand': 'emunand',
+    'cfw': 'custom firmware',
+    'atmo': 'atmosphere',
+}
+
+def _apply_synonyms(tokens: list) -> list:
+    return [SYNONYMS.get(t, t) for t in tokens]
+
+def _ngrams(tokens: list, n=2) -> list:
+    out = []
+    L = len(tokens)
+    for k in range(1, n+1):
+        if L >= k:
+            for i in range(L - k + 1):
+                out.append(' '.join(tokens[i:i+k]))
+    return out
+
+_RAPIDFUZZ = None
+try:
+    from rapidfuzz import fuzz as _rf_fuzz
+    _RAPIDFUZZ = _rf_fuzz
+except Exception:
+    _RAPIDFUZZ = None
+
 
 
 @dp.message(Command("aiguide"))
@@ -900,7 +966,19 @@ async def handle_aiguide(message: types.Message):
         await message.reply('❌ База гайдов пуста')
         return
 
+    # Optionally use ML semantic embeddings if environment variable ML_MODE=1 and sentence-transformers is installed
+    use_ml = os.environ.get('ML_MODE', '0') in ('1', 'true', 'True')
+    ml_model = None
+    if use_ml:
+        try:
+            from sentence_transformers import SentenceTransformer
+            ml_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+        except Exception:
+            ml_model = None
+
     q_tokens = _tokenize(query)
+    q_tokens = _apply_synonyms(q_tokens)
+    q_tokens = q_tokens + _ngrams(q_tokens, n=2)
     q_tf = _term_freq(q_tokens)
 
     scored = []
@@ -908,22 +986,39 @@ async def handle_aiguide(message: types.Message):
         title = e.get('title', '')
         combined_text = title
         tokens = _tokenize(combined_text)
+        tokens = _apply_synonyms(tokens)
+        tokens = tokens + _ngrams(tokens, n=2)
         tf = _term_freq(tokens)
         sim = _cosine_sim(q_tf, tf)
-        # also mix in fuzzy ratio to boost short-phrase matches
+        # ML similarity if available
+        ml_score = 0.0
+        if ml_model is not None:
+            try:
+                q_emb = ml_model.encode([query])[0]
+                t_emb = ml_model.encode([title])[0]
+                ml_score = float(_vec_dot(q_emb, t_emb) / ((_vec_norm(q_emb) * _vec_norm(t_emb)) + 1e-9))
+            except Exception:
+                ml_score = 0.0
+        # fuzzy boost: prefer rapidfuzz if available
         try:
-            fscore = fuzz.token_set_ratio(query.lower(), title.lower()) / 100.0
+            if _RAPIDFUZZ:
+                fscore = _RAPIDFUZZ.token_set_ratio(query.lower(), title.lower()) / 100.0
+            else:
+                fscore = fuzz.token_set_ratio(query.lower(), title.lower()) / 100.0
         except Exception:
             fscore = 0.0
-        # weighted score: 70% lexical cosine, 30% fuzzy
-        final_score = (sim * 0.7) + (fscore * 0.3)
-        scored.append((e, final_score))
+        # combine: 60% lexical, 25% ML (if present), 15% fuzzy
+        weight_ml = 0.25 if ml_model is not None else 0.0
+        weight_lex = 0.6
+        weight_fuzz = 0.15
+        total = sim * weight_lex + ml_score * weight_ml + fscore * weight_fuzz
+        scored.append((e, total))
 
     scored.sort(key=lambda x: x[1], reverse=True)
     best_entry, best_score = scored[0]
 
-    # thresholds are scaled 0..1; require at least 0.35 to auto-return
-    if best_score >= 0.35:
+    # thresholds are scaled 0..1; require at least 0.4 to auto-return
+    if best_score >= 0.4:
         e = best_entry
         await message.reply(f"✅ Найден гайд: *{e.get('title')}*\nКатегория: {e.get('category')}\n{e.get('url')}", parse_mode='Markdown')
         return
@@ -941,6 +1036,36 @@ async def handle_aiguide(message: types.Message):
         return
 
     await message.reply('❌ Не нашёл подходящих гайдов. Попробуйте уточнить запрос.')
+
+
+@dp.message(Command("status"))
+async def bot_status(message: types.Message):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    # basic status
+    try:
+        webhook_info = await bot.get_webhook_info()
+    except Exception:
+        webhook_info = None
+    text = f"Bot id: {bot.id}\nCategories: {len(GUIDES)}\nTotal guides: {sum(len(g) for g in GUIDES.values())}\nML_MODE: {os.environ.get('ML_MODE', '0')}\nWebhook: {webhook_info}"
+    await message.reply(text)
+
+
+@dp.message(Command("restart_polling"))
+async def restart_polling_cmd(message: types.Message):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    await message.reply("🔁 Перезапускаю polling: удаляю webhook и пытаюсь перезапустить")
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+    except Exception as e:
+        logging.exception(f"Failed deleting webhook: {e}")
+    # instruct admins to restart the process if desired
+    await message.reply("✅ Удалил webhook. Пожалуйста, перезапустите процесс бота на хосте, если polling не восстановится автоматически.")
 
 async def main():
     logging.basicConfig(level=logging.INFO)
@@ -960,7 +1085,11 @@ async def main():
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, '0.0.0.0', int(os.environ.get('PORT', 8080)))
-        await site.start()
+        try:
+            await site.start()
+        except OSError as e:
+            logging.warning(f"Health server failed to bind port {os.environ.get('PORT', 8080)}: {e}")
+            # continue without health server
 
     # start periodic sync background task if configured
     async def background_sync():
@@ -980,6 +1109,12 @@ async def main():
             asyncio.create_task(_start_health_server())
         except Exception:
             logging.exception("Health server failed to start")
+    # Log webhook info at startup to help debug TelegramConflictError
+    try:
+        info = await bot.get_webhook_info()
+        logging.info(f"Webhook info at startup: {info}")
+    except Exception as e:
+        logging.warning(f"Could not fetch webhook info at startup: {e}")
         # also start resolver loop
         async def background_resolver():
             await asyncio.sleep(10)

@@ -22,6 +22,9 @@ Release checklist
    - /all
    - /guide battery
    - /aiguide battery desync fix
+   - /help
+   - /status (admin)
+   - /restart_polling (admin)
    - /sync (admin)
 
 6. After verification, publish release on GitHub but ensure `.env` is not tracked.
