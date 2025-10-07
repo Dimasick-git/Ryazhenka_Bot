@@ -583,7 +583,7 @@ async def show_all(message: types.Message):
     text += f"\n📝 Всего: {total_guides} гайдов в {len(GUIDES)} категориях\n\n"
     text += "Используйте /guide <название> для поиска или выберите категорию:"
     
-    await message.reply(text, parse_mode="Markdown", reply_markup=create_categories_keyboard())
+    await safe_send(message, text, reply_markup=create_categories_keyboard())
 
 @dp.callback_query(F.data.startswith("cat_"))
 async def handle_category(callback_query: types.CallbackQuery):
@@ -609,9 +609,10 @@ async def handle_category(callback_query: types.CallbackQuery):
     ])
     
     try:
-        await callback_query.message.edit_text(text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb_nav)
-    except:
-        await callback_query.message.answer(text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb_nav)
+        try:
+            await callback_query.message.edit_text(text, disable_web_page_preview=True, reply_markup=kb_nav)
+        except Exception:
+            await callback_query.message.answer(text, disable_web_page_preview=True, reply_markup=kb_nav)
     
     await callback_query.answer()
 
@@ -830,7 +831,7 @@ async def recommend_repos(message: types.Message):
     text = f"📦 Рекомендуемые репозитории {user}:\n\n"
     for name, url, desc in repos[:15]:
         text += f"• [{name}]({url}) — {desc}\n"
-    await message.reply(text, parse_mode='Markdown', disable_web_page_preview=True)
+    await safe_send(message, text, disable_web_page_preview=True)
 
 
 @dp.message(Command("admin_help"))
@@ -1101,6 +1102,37 @@ def _generate_variants(token: str) -> list:
     out = [v for v in variants if v and v not in STOP_WORDS]
     return out
 
+
+def _escape_markdown_v2(text: str) -> str:
+    """Escape text for MarkdownV2 minimally."""
+    if not text:
+        return text
+    # escape characters as per Telegram MarkdownV2
+    escape_chars = r"_ * [ ] ( ) ~ ` > # + - = | { } . !"
+    for ch in "_ * [ ] ( ) ~ ` > # + - = | { } . !".split():
+        text = text.replace(ch, f"\\{ch}")
+    return text
+
+
+async def safe_send(target, text: str, reply_markup=None, disable_web_page_preview=False):
+    """Try to send MarkdownV2 escaped text, fallback to plain text if Telegram rejects entities."""
+    try:
+        # first try MarkdownV2 with escaping
+        esc = _escape_markdown_v2(text)
+        await target.reply(esc, parse_mode='MarkdownV2', reply_markup=reply_markup, disable_web_page_preview=disable_web_page_preview)
+        return
+    except Exception as e:
+        # fallback: plain text
+        try:
+            await target.reply(text, reply_markup=reply_markup, disable_web_page_preview=disable_web_page_preview)
+            return
+        except Exception:
+            # last resort: send without reply
+            try:
+                await target.answer(text)
+            except Exception:
+                logging.exception('Failed to send message')
+
 def _ngrams(tokens: list, n=2) -> list:
     out = []
     L = len(tokens)
@@ -1321,16 +1353,18 @@ async def handle_aiguide(message: types.Message):
     if quick and quick[0][1] >= 0.35 * 100:  # scaled 0..100 threshold ~35
         best, score = quick[0]
         if score >= 75:
-            await message.reply(f"✅ Найден гайд: *{best.get('title')}*\nКатегория: {best.get('category')}\n{best.get('url')}", parse_mode='Markdown')
+            # send plain text to avoid Markdown parsing issues from user-provided titles/urls
+            await message.reply(f"✅ Найден гайд: {best.get('title')}\nКатегория: {best.get('category')}\n{best.get('url')}")
             return
         # otherwise suggest
         text = "🤔 Похоже, ничего точного не найдено. Вот похожие варианты:\n\n"
         kb = InlineKeyboardMarkup(inline_keyboard=[])
         for doc, sc in quick[:10]:
-            text += f"*{doc.get('title')}* — {doc.get('category')} (score {round(sc,2)})\n"
+            text += f"{doc.get('title')} — {doc.get('category')} (score {round(sc,2)})\n"
             if doc.get('url'):
                 kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {doc.get('title')}", url=doc.get('url'))])
-        await message.reply(text, parse_mode='Markdown', reply_markup=kb if kb.inline_keyboard else None)
+        # send plain text to avoid entity parsing errors
+        await message.reply(text, reply_markup=kb if kb.inline_keyboard else None)
         return
 
     # Fallback: previous lexical+ML approach if quick attempt failed
