@@ -6,6 +6,7 @@ import aiohttp
 import xml.etree.ElementTree as ET
 import re
 import urllib.parse
+import math
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, CommandObject
@@ -662,6 +663,25 @@ async def back_to_categories(callback_query: types.CallbackQuery):
     
     await callback_query.answer()
 
+
+@dp.callback_query(F.data.startswith("open|"))
+async def open_suggestion(callback_query: types.CallbackQuery):
+    data = callback_query.data.split('|', 1)[1]
+    ctx = DIALOG_CTX.get(data)
+    if not ctx:
+        await callback_query.answer("❌ Контекст не найден")
+        return
+    url = ctx.get('url')
+    title = ctx.get('title')
+    if url:
+        try:
+            await callback_query.message.reply(f"Открываю гайд: {title}\n{url}")
+        except Exception:
+            await callback_query.message.answer(f"{title}\n{url}")
+    else:
+        await callback_query.answer("❌ Нет URL для этого гайда")
+    await callback_query.answer()
+
 @dp.message(Command("guide"))
 async def send_guide(message: types.Message, command: CommandObject):
     query = command.args
@@ -684,7 +704,18 @@ async def send_guide(message: types.Message, command: CommandObject):
     # We'll compute a combined score per title to be more tolerant.
     results = []
     q_lower = query.lower()
-    for t in titles:
+    # try BM25 if available (build index on first use)
+    global BM25_INDEX
+    if BM25_INDEX is None:
+        BM25_INDEX = _build_bm25_index()
+    q_terms = _apply_synonyms(_tokenize(query))
+    q_expanded = []
+    for t in q_terms:
+        q_expanded.append(t)
+        q_expanded.extend(_generate_variants(t))
+    q_terms = q_expanded
+    bm25_scores = _bm25_score(q_terms, BM25_INDEX) if BM25_INDEX and BM25_INDEX['N'] > 0 else None
+    for idx_t, t in enumerate(titles):
         t_lower = t.lower()
         # exact substring match -> high score
         if q_lower in t_lower or t_lower in q_lower:
@@ -708,6 +739,14 @@ async def send_guide(message: types.Message, command: CommandObject):
                     score = max(score, lev_score)
                 except Exception:
                     pass
+        # if BM25 available, combine its score
+        if bm25_scores is not None:
+            try:
+                bm = bm25_scores[idx_t]
+                # normalize bm to 0..1 by a simple scale (not perfect but helps)
+                score = max(score, min(1.0, bm / (bm25_scores[0] + 1e-9)))
+            except Exception:
+                pass
         results.append((t, score))
     # sort by score desc
     results.sort(key=lambda x: x[1], reverse=True)
@@ -749,7 +788,9 @@ async def send_guide(message: types.Message, command: CommandObject):
         kb = InlineKeyboardMarkup(inline_keyboard=[])
         for t, cat, url, score in suggestions[:10]:
             text += f"*{t}* — {cat} (score {score})\n"
-            kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {t}", url=url)])
+            # store conversational context so callback can open the url
+            kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {t}", callback_data=f"open|{t}")])
+            DIALOG_CTX[t] = {'title': t, 'category': cat, 'url': url}
         await message.reply(text, parse_mode="Markdown", reply_markup=kb)
         return
 
@@ -917,6 +958,83 @@ SYNONYMS = {
 def _apply_synonyms(tokens: list) -> list:
     return [SYNONYMS.get(t, t) for t in tokens]
 
+
+# keyboard layout maps for common mistypes (ru<->en)
+_EN_TO_RU = str.maketrans(
+    "qwertyuiop[]asdfghjkl;'zxcvbnm,./",
+    "йцукенгшщзхъфывапролджэячсмитьбю."
+)
+_RU_TO_EN = str.maketrans(
+    "йцукенгшщзхъфывапролджэячсмитьбю.",
+    "qwertyuiop[]asdfghjkl;'zxcvbnm,./"
+)
+
+
+def _fix_keyboard_layout(word: str) -> str:
+    # try mapping assuming the word was typed in wrong layout
+    try:
+        ru = word.translate(_EN_TO_RU)
+        en = word.translate(_RU_TO_EN)
+        # return the one that contains letters from the opposite set
+        # prefer ru if original looks Latin
+        if re.search('[a-z]', word) and re.search('[а-яё]', ru):
+            return ru
+        if re.search('[а-яё]', word) and re.search('[a-z]', en):
+            return en
+    except Exception:
+        pass
+    return word
+
+
+_TRANSLIT_EN_TO_RU = {
+    'sh': 'ш', 'ch': 'ч', 'yo': 'ё', 'zh': 'ж', 'yu': 'ю', 'ya': 'я', 'kh': 'х',
+}
+_TRANSLIT_SIMPLE = str.maketrans({
+    'a':'а','b':'б','c':'ц','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'й','k':'к','l':'л','m':'м',
+    'n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'ы','z':'з'
+})
+
+
+def _transliterate_basic(word: str) -> str:
+    # rough transliteration from latin to cyrillic for common mistakes
+    try:
+        w = word
+        # handle digraphs first
+        for k,v in _TRANSLIT_EN_TO_RU.items():
+            w = w.replace(k, v)
+        w = w.translate(_TRANSLIT_SIMPLE)
+        # keep only cyrillic letters
+        w = re.sub(r'[^а-яё]', '', w)
+        if w:
+            return w
+    except Exception:
+        pass
+    return word
+
+
+def _normalize_repeats(word: str) -> str:
+    # collapse repeated letters: loool -> lol, baaaattery -> bater y (reduce repeats)
+    return re.sub(r'(.)\1{2,}', r'\1\1', word)
+
+
+def _generate_variants(token: str) -> list:
+    variants = {token}
+    token = token.lower()
+    # keyboard layout fixes
+    kf = _fix_keyboard_layout(token)
+    variants.add(kf)
+    # transliteration attempt
+    tr = _transliterate_basic(token)
+    variants.add(tr)
+    # repeats normalization
+    nr = _normalize_repeats(token)
+    variants.add(nr)
+    # try combinations
+    variants.add(_normalize_repeats(kf))
+    variants.add(_normalize_repeats(tr))
+    # keep only non-empty
+    return [v for v in variants if v]
+
 def _ngrams(tokens: list, n=2) -> list:
     out = []
     L = len(tokens)
@@ -932,6 +1050,80 @@ try:
     _RAPIDFUZZ = _rf_fuzz
 except Exception:
     _RAPIDFUZZ = None
+
+
+# --- BM25 index (pure Python) for better offline semantic-like ranking ---
+BM25_INDEX = None
+
+def _build_bm25_index():
+    """Build BM25 index over guide titles. Returns dict with needed structures."""
+    docs = []
+    doc_tfs = []
+    df = {}
+    for cat, items in GUIDES.items():
+        if isinstance(items, dict):
+            for title, url in items.items():
+                docs.append({'title': title, 'category': cat, 'url': url})
+        elif isinstance(items, list):
+            for it in items:
+                title = it.get('title') if isinstance(it, dict) else str(it)
+                url = it.get('url') if isinstance(it, dict) else ''
+                docs.append({'title': title, 'category': cat, 'url': url})
+
+    for d in docs:
+        tokens = _apply_synonyms(_tokenize(d['title']))
+        # expand tokens with variants (keyboard/translit/repeats)
+        expanded = []
+        for t in tokens:
+            expanded.append(t)
+            expanded.extend(_generate_variants(t))
+        tokens = expanded + _ngrams(expanded, n=2)
+        tf = {}
+        for t in tokens:
+            tf[t] = tf.get(t, 0) + 1
+        doc_tfs.append(tf)
+        for t in set(tokens):
+            df[t] = df.get(t, 0) + 1
+
+    N = len(docs)
+    idf = {}
+    for t, freq in df.items():
+        idf[t] = max(0.0, math.log((N - freq + 0.5) / (freq + 0.5) + 1))
+
+    avgdl = 0.0
+    lengths = [sum(v for v in tf.values()) for tf in doc_tfs]
+    if lengths:
+        avgdl = sum(lengths) / len(lengths)
+
+    return {
+        'docs': docs,
+        'doc_tfs': doc_tfs,
+        'idf': idf,
+        'avgdl': avgdl,
+        'lengths': lengths,
+        'N': N,
+    }
+
+
+def _bm25_score(query_terms, index, k1=1.5, b=0.75):
+    scores = [0.0] * index['N']
+    for i, tf in enumerate(index['doc_tfs']):
+        score = 0.0
+        dl = index['lengths'][i] if index['lengths'] else 0.0
+        for term in query_terms:
+            if term not in tf:
+                continue
+            f = tf.get(term, 0)
+            idf = index['idf'].get(term, 0.0)
+            denom = f + k1 * (1 - b + b * (dl / (index['avgdl'] + 1e-9)))
+            score += idf * (f * (k1 + 1)) / (denom + 1e-9)
+        scores[i] = score
+    return scores
+
+
+# conversational suggestion storage per chat_id
+DIALOG_CTX = {}
+
 
 
 
