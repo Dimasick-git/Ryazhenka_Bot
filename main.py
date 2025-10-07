@@ -10,48 +10,6 @@ import math
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, CommandObject
-try:
-    from fuzzywuzzy import fuzz, process
-    _HAVE_FUZZY = True
-except Exception:
-    # lightweight fallback using difflib
-    from difflib import SequenceMatcher
-    _HAVE_FUZZY = False
-
-    class _SimpleFuzz:
-        @staticmethod
-        def token_set_ratio(a: str, b: str) -> int:
-            return int(SequenceMatcher(None, a, b).ratio() * 100)
-
-        @staticmethod
-        def partial_ratio(a: str, b: str) -> int:
-            return int(SequenceMatcher(None, a, b).ratio() * 100)
-
-    fuzz = _SimpleFuzz()
-    process = None
-
-try:
-    from Levenshtein import distance as levenshtein_distance
-except Exception:
-    def levenshtein_distance(a: str, b: str) -> int:
-        # simple iterative DP implementation
-        if a == b:
-            return 0
-        la = len(a)
-        lb = len(b)
-        if la == 0:
-            return lb
-        if lb == 0:
-            return la
-        prev = list(range(lb + 1))
-        for i in range(1, la + 1):
-            cur = [i] + [0] * lb
-            for j in range(1, lb + 1):
-                cost = 0 if a[i - 1] == b[j - 1] else 1
-                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
-            prev = cur
-        return prev[lb]
-
 def _load_dotenv(path='.env'):
     """Simple .env loader: set variables from a .env file if they are not already in os.environ."""
     try:
@@ -96,44 +54,52 @@ def _read_key_from_env_file(path: str, key: str):
     return None
 
 if not BOT_TOKEN:
-    # attempt to read explicit BOT_TOKEN from .env (lenient parse)
     token_from_env = _read_key_from_env_file('.env', 'BOT_TOKEN')
     if token_from_env:
         os.environ['BOT_TOKEN'] = token_from_env
         BOT_TOKEN = token_from_env
 
-# support multiple channels (comma-separated). Items can be channel_id (starts with UC) or username
-YT_CHANNELS = [c.strip() for c in os.environ.get("YT_CHANNELS", "UCjtFvdgneo1vhSAggJUJeMw").split(",") if c.strip()]
-GITHUB_REPO = os.environ.get("GITHUB_REPO", "Dimasick-git/Ryzhenka")
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-SYNC_INTERVAL_SECONDS = int(os.environ.get("SYNC_INTERVAL_SECONDS", 3600))
-admin_env = os.environ.get("ADMIN_IDS", "")
-ADMIN_IDS = [int(x) for x in admin_env.split(",") if x.strip().isdigit()]
-# fallback: add user's id provided in chat if no admins configured
-if not ADMIN_IDS:
-    try:
-        ADMIN_IDS = [2072467087]
-    except Exception:
-        ADMIN_IDS = []
 
-if not BOT_TOKEN:
-    # If a .env.example exists but no .env, create a .env file to help the user
-    try:
-        if not os.path.exists('.env') and os.path.exists('.env.example'):
-            with open('.env.example', 'r', encoding='utf-8') as sf:
-                content = sf.read()
-            with open('.env', 'w', encoding='utf-8') as df:
-                df.write(content)
-            print("ℹ️ Файл .env создан из .env.example. Пожалуйста, отредактируйте .env и вставьте ваш BOT_TOKEN.")
-            print("После добавления токена запустите бота снова.")
-        else:
-            print("❌ Ошибка: BOT_TOKEN не найден в переменных окружения!")
-            print("Установите переменную окружения BOT_TOKEN с токеном от @BotFather или заполните файл .env")
-    except Exception:
-        print("❌ Ошибка: BOT_TOKEN не найден в переменных окружения и не удалось создать .env автоматически.")
-        print("Установите BOT_TOKEN вручную в переменных окружения или в файле .env")
-    # stop here because without a token the bot cannot operate
-    exit(1)
+try:
+    from Levenshtein import distance as levenshtein_distance
+except Exception:
+    def levenshtein_distance(a: str, b: str) -> int:
+        # simple iterative DP implementation
+        if a == b:
+            return 0
+        la = len(a)
+        lb = len(b)
+        if la == 0:
+            return lb
+        if lb == 0:
+            return la
+        prev = list(range(lb + 1))
+        for i in range(1, la + 1):
+            cur = [i] + [0] * lb
+            for j in range(1, lb + 1):
+                cost = 0 if a[i - 1] == b[j - 1] else 1
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+            prev = cur
+        return prev[lb]
+try:
+    from fuzzywuzzy import fuzz, process
+    _HAVE_FUZZY = True
+except Exception:
+    # lightweight fallback using difflib
+    from difflib import SequenceMatcher
+    _HAVE_FUZZY = False
+
+    class _SimpleFuzz:
+        @staticmethod
+        def token_set_ratio(a: str, b: str) -> int:
+            return int(SequenceMatcher(None, a, b).ratio() * 100)
+
+        @staticmethod
+        def partial_ratio(a: str, b: str) -> int:
+            return int(SequenceMatcher(None, a, b).ratio() * 100)
+
+    fuzz = _SimpleFuzz()
+    process = None
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -947,13 +913,92 @@ def _vec_norm(a):
 
 # small synonyms/aliases table to map common typos or shorthand -> canonical form
 SYNONYMS = {
+    # battery-related
     'batter': 'battery',
     'batery': 'battery',
-    'emunand': 'emu nand',
+    'batt': 'battery',
+    'battery': 'battery',
+    'batteryfix': 'battery',
+    'batteryfixes': 'battery',
+    'battery drain': 'battery',
+    'batt drain': 'battery',
+    'battery drain': 'battery',
+    'batteryproblem': 'battery',
+    'battery problem': 'battery',
+
+    # emu/emummc/emunand variants
+    'emummc': 'emummc',
+    'emmummc': 'emummc',
+    'emmumc': 'emummc',
+    'emumc': 'emummc',
+    'emu mmc': 'emummc',
+    'emu-mmc': 'emummc',
+    'emu-mmc': 'emummc',
+    'emu nand': 'emunand',
     'emunand': 'emunand',
+    'emu-nand': 'emunand',
+    'emunad': 'emunand',
+    'emunanc': 'emunand',
+
+    # common acronyms and firmware shorthand
     'cfw': 'custom firmware',
     'atmo': 'atmosphere',
+    'atmos': 'atmosphere',
+    'atmosphere': 'atmosphere',
+
+    # actions
+    'fix': 'fix',
+    'repair': 'fix',
+    'install': 'install',
+    'remove': 'remove',
 }
+
+# lightweight stopwords (English + simple Russian fillers) to ignore in ranking
+STOP_WORDS = set([
+    'the', 'a', 'an', 'to', 'for', 'how', 'howto', 'how-to', 'как', 'что', 'почему', 'про', 'по', 'на',
+    'и', 'в', 'с', 'от', 'у', 'как', 'это', 'что', 'редо'
+])
+
+
+def _simple_stem(token: str) -> str:
+    """Very small stemmer: remove common English suffixes and trailing punctuation.
+    Also remove a few Russian noun suffixes heuristically."""
+    t = token.lower()
+    # english
+    for suf in ('ing', 'ed', 'es', 's'):
+        if t.endswith(suf) and len(t) > len(suf) + 2:
+            t = t[: -len(suf)]
+            break
+    # russian light endings
+    for suf in ('ами', 'ами', 'ами', 'ов', 'ев', 'ия', 'ий', 'ие'):
+        if t.endswith(suf) and len(t) > len(suf) + 2:
+            t = t[: -len(suf)]
+            break
+    return t
+
+
+# Merge generated synonyms if present (created by scripts/generate_synonyms.py)
+try:
+    gen_path = os.path.join(os.path.dirname(__file__), 'generated_synonyms.json')
+    if os.path.exists(gen_path):
+        with open(gen_path, 'r', encoding='utf-8') as gf:
+            gen = json.load(gf)
+            for k, v in gen.items():
+                if k and v and k not in SYNONYMS:
+                    SYNONYMS[k] = v
+except Exception:
+    pass
+
+# explicit manual overrides for EmuMMC/EmuNAND variants (ensure they map to tokens present in guides)
+try:
+    SYNONYMS.setdefault('emummc', 'emummc')
+    SYNONYMS.setdefault('emumc', 'emummc')
+    SYNONYMS.setdefault('emu-mmc', 'emummc')
+    SYNONYMS.setdefault('emu mmc', 'emummc')
+    SYNONYMS.setdefault('emunand', 'emunand')
+    SYNONYMS.setdefault('emu nand', 'emunand')
+except Exception:
+    pass
 
 def _apply_synonyms(tokens: list) -> list:
     return [SYNONYMS.get(t, t) for t in tokens]
@@ -1033,7 +1078,25 @@ def _generate_variants(token: str) -> list:
     variants.add(_normalize_repeats(kf))
     variants.add(_normalize_repeats(tr))
     # keep only non-empty
-    return [v for v in variants if v]
+    # splitting/joining variants: e.g., emu nand -> emunand and vice versa
+    new = set()
+    for v in list(variants):
+        if ' ' in v:
+            new.add(v.replace(' ', ''))
+            new.add(v.replace(' ', '-'))
+        else:
+            # try inserting space in camel-ish tokens
+            if len(v) > 4:
+                # emunand -> emu nand
+                if v.startswith('emu') and 'emu' not in ('emu',):
+                    new.add('emu ' + v[3:])
+        # add stemmed variant
+        st = _simple_stem(v)
+        new.add(st)
+    variants.update(new)
+    # filter stopwords and empty
+    out = [v for v in variants if v and v not in STOP_WORDS]
+    return out
 
 def _ngrams(tokens: list, n=2) -> list:
     out = []
@@ -1121,6 +1184,88 @@ def _bm25_score(query_terms, index, k1=1.5, b=0.75):
     return scores
 
 
+def _search_guides(query: str, top_n: int = 10):
+    """Return list of (doc, combined_score) where doc is {'title','category','url'}.
+    Combines BM25 (when available), fuzzy and simple lexical similarity.
+    Scores are returned 0..100 (higher better).
+    """
+    if not query or not GUIDES:
+        return []
+
+    # ensure BM25 index
+    global BM25_INDEX
+    if BM25_INDEX is None:
+        BM25_INDEX = _build_bm25_index()
+
+    # Prepare query terms and expansions
+    q = query.strip().lower()
+    q_tokens = _apply_synonyms(_tokenize(q))
+    expanded = []
+    for t in q_tokens:
+        expanded.append(t)
+        expanded.extend(_generate_variants(t))
+    # include ngrams (bi-grams)
+    expanded += _ngrams(expanded, n=2)
+
+    # BM25
+    bm25_scores = None
+    if BM25_INDEX and BM25_INDEX['N'] > 0:
+        bm25_scores = _bm25_score(expanded, BM25_INDEX)
+
+    # build flat choices to align with BM25 index order
+    choices = BM25_INDEX['docs'] if BM25_INDEX else []
+
+    results = []
+    # compute normalization factor for BM25
+    max_bm = max(bm25_scores) if bm25_scores else 0.0
+
+    for i, doc in enumerate(choices):
+        title = doc.get('title', '')
+        title_l = title.lower()
+
+        # fuzzy scores (0..100)
+        try:
+            if _RAPIDFUZZ:
+                fscore = _RAPIDFUZZ.token_set_ratio(q, title_l)
+            else:
+                fscore = fuzz.token_set_ratio(q, title_l)
+        except Exception:
+            fscore = 0
+
+        # simple lexical overlap: number of query tokens found in title
+        qtok = [t for t in q_tokens if t]
+        if qtok:
+            found = sum(1 for t in qtok if t in title_l)
+            lex_score = int((found / len(qtok)) * 100)
+        else:
+            lex_score = 0
+
+        bm_norm = 0.0
+        if bm25_scores is not None:
+            bm = bm25_scores[i]
+            if max_bm > 0:
+                bm_norm = float(bm / (max_bm + 1e-9)) * 100.0
+
+        # combine: BM25(50%), fuzzy(30%), lexical overlap(20%) => final 0..100
+        combined = (bm_norm * 0.5) + (fscore * 0.3) + (lex_score * 0.2)
+
+        # fallback boost for short fuzzy-correct matches (distance small)
+        if combined < 50 and len(q) <= 12:
+            # try levenshtein against title tokens
+            try:
+                tkns = re.findall(r"[a-z0-9а-яё]+", title_l)
+                best_lev = min((levenshtein_distance(q, t) for t in tkns), default=999)
+                if best_lev <= 2:
+                    combined = max(combined, 65)
+            except Exception:
+                pass
+
+        results.append((doc, combined))
+
+    results.sort(key=lambda x: x[1], reverse=True)
+    return results[:top_n]
+
+
 # conversational suggestion storage per chat_id
 DIALOG_CTX = {}
 
@@ -1168,6 +1313,24 @@ async def handle_aiguide(message: types.Message):
         except Exception:
             ml_model = None
 
+    # First try the fast BM25 + fuzzy combination
+    quick = _search_guides(query, top_n=10)
+    if quick and quick[0][1] >= 0.35 * 100:  # scaled 0..100 threshold ~35
+        best, score = quick[0]
+        if score >= 75:
+            await message.reply(f"✅ Найден гайд: *{best.get('title')}*\nКатегория: {best.get('category')}\n{best.get('url')}", parse_mode='Markdown')
+            return
+        # otherwise suggest
+        text = "🤔 Похоже, ничего точного не найдено. Вот похожие варианты:\n\n"
+        kb = InlineKeyboardMarkup(inline_keyboard=[])
+        for doc, sc in quick[:10]:
+            text += f"*{doc.get('title')}* — {doc.get('category')} (score {round(sc,2)})\n"
+            if doc.get('url'):
+                kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {doc.get('title')}", url=doc.get('url'))])
+        await message.reply(text, parse_mode='Markdown', reply_markup=kb if kb.inline_keyboard else None)
+        return
+
+    # Fallback: previous lexical+ML approach if quick attempt failed
     q_tokens = _tokenize(query)
     q_tokens = _apply_synonyms(q_tokens)
     q_tokens = q_tokens + _ngrams(q_tokens, n=2)
