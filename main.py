@@ -9,8 +9,47 @@ import urllib.parse
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, CommandObject
-from fuzzywuzzy import fuzz, process
-from Levenshtein import distance as levenshtein_distance
+try:
+    from fuzzywuzzy import fuzz, process
+    _HAVE_FUZZY = True
+except Exception:
+    # lightweight fallback using difflib
+    from difflib import SequenceMatcher
+    _HAVE_FUZZY = False
+
+    class _SimpleFuzz:
+        @staticmethod
+        def token_set_ratio(a: str, b: str) -> int:
+            return int(SequenceMatcher(None, a, b).ratio() * 100)
+
+        @staticmethod
+        def partial_ratio(a: str, b: str) -> int:
+            return int(SequenceMatcher(None, a, b).ratio() * 100)
+
+    fuzz = _SimpleFuzz()
+    process = None
+
+try:
+    from Levenshtein import distance as levenshtein_distance
+except Exception:
+    def levenshtein_distance(a: str, b: str) -> int:
+        # simple iterative DP implementation
+        if a == b:
+            return 0
+        la = len(a)
+        lb = len(b)
+        if la == 0:
+            return lb
+        if lb == 0:
+            return la
+        prev = list(range(lb + 1))
+        for i in range(1, la + 1):
+            cur = [i] + [0] * lb
+            for j in range(1, lb + 1):
+                cost = 0 if a[i - 1] == b[j - 1] else 1
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+            prev = cur
+        return prev[lb]
 
 def _load_dotenv(path='.env'):
     """Simple .env loader: set variables from a .env file if they are not already in os.environ."""
@@ -797,6 +836,111 @@ async def admin_help(message: types.Message):
         "• /recommend — Показать репозитории Dimasick-git\n"
     )
     await message.reply(text)
+
+def _tokenize(text: str) -> list:
+    if not text:
+        return []
+    text = text.lower()
+    # simple tokenization: words and numbers, keep cyrillic
+    tokens = re.findall(r"[a-z0-9а-яё]+", text)
+    return tokens
+
+
+def _term_freq(tokens: list) -> dict:
+    tf = {}
+    for t in tokens:
+        tf[t] = tf.get(t, 0) + 1
+    return tf
+
+
+def _cosine_sim(a: dict, b: dict) -> float:
+    # a and b are term-frequency dicts
+    if not a or not b:
+        return 0.0
+    # compute dot product
+    dot = 0
+    for k, v in a.items():
+        if k in b:
+            dot += v * b[k]
+    norm_a = sum(v * v for v in a.values()) ** 0.5
+    norm_b = sum(v * v for v in b.values()) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+@dp.message(Command("aiguide"))
+async def handle_aiguide(message: types.Message):
+    query = message.text[len('/aiguide'):].strip()
+    if not query:
+        await message.reply('Пожалуйста, напишите запрос для поиска гайда.')
+        return
+    try:
+        with open('guides.json', 'r', encoding='utf-8') as f:
+            guides_data = json.load(f)
+    except Exception:
+        await message.reply('Ошибка загрузки гайдов.')
+        return
+
+    # guides.json is structured as categories -> {title: url}
+    # build a flat list of entries with title and optional url/content
+    entries = []
+    for cat, items in guides_data.items():
+        if isinstance(items, dict):
+            for title, url in items.items():
+                entries.append({'title': title, 'category': cat, 'url': url})
+        elif isinstance(items, list):
+            for it in items:
+                # support list of objects
+                title = it.get('title') if isinstance(it, dict) else str(it)
+                url = it.get('url') if isinstance(it, dict) else ''
+                entries.append({'title': title, 'category': cat, 'url': url})
+
+    if not entries:
+        await message.reply('❌ База гайдов пуста')
+        return
+
+    q_tokens = _tokenize(query)
+    q_tf = _term_freq(q_tokens)
+
+    scored = []
+    for e in entries:
+        title = e.get('title', '')
+        combined_text = title
+        tokens = _tokenize(combined_text)
+        tf = _term_freq(tokens)
+        sim = _cosine_sim(q_tf, tf)
+        # also mix in fuzzy ratio to boost short-phrase matches
+        try:
+            fscore = fuzz.token_set_ratio(query.lower(), title.lower()) / 100.0
+        except Exception:
+            fscore = 0.0
+        # weighted score: 70% lexical cosine, 30% fuzzy
+        final_score = (sim * 0.7) + (fscore * 0.3)
+        scored.append((e, final_score))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+    best_entry, best_score = scored[0]
+
+    # thresholds are scaled 0..1; require at least 0.35 to auto-return
+    if best_score >= 0.35:
+        e = best_entry
+        await message.reply(f"✅ Найден гайд: *{e.get('title')}*\nКатегория: {e.get('category')}\n{e.get('url')}", parse_mode='Markdown')
+        return
+
+    # otherwise suggest top 5 with scores
+    suggestions = [(s[0], s[1]) for s in scored if s[1] >= 0.15][:10]
+    if suggestions:
+        text = "🤔 Похоже, ничего точного не найдено. Вот похожие варианты:\n\n"
+        kb = InlineKeyboardMarkup(inline_keyboard=[])
+        for e, sc in suggestions:
+            text += f"*{e.get('title')}* — {e.get('category')} (score {round(sc,3)})\n"
+            if e.get('url'):
+                kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {e.get('title')}", url=e.get('url'))])
+        await message.reply(text, parse_mode='Markdown', reply_markup=kb if kb.inline_keyboard else None)
+        return
+
+    await message.reply('❌ Не нашёл подходящих гайдов. Попробуйте уточнить запрос.')
 
 async def main():
     logging.basicConfig(level=logging.INFO)
