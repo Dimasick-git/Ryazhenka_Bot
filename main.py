@@ -32,7 +32,38 @@ def _load_dotenv(path='.env'):
 # Load .env so local runs pick up values without external deps
 _load_dotenv()
 
-YT_CHANNELS = [c.strip() for c in os.environ.get("YT_CHANNELS", "").split(",") if c.strip()]
+# YT channels persistence: allow managing channels without editing .env by using a small file.
+YT_CHANNELS_FILE = 'yt_channels.json'
+YT_CHANNELS = []
+def _load_yt_channels():
+    try:
+        if os.path.exists(YT_CHANNELS_FILE):
+            with open(YT_CHANNELS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return [str(x).strip() for x in data if str(x).strip()]
+    except Exception:
+        pass
+    # fallback to environment variable (comma separated)
+    return [c.strip() for c in os.environ.get("YT_CHANNELS", "").split(",") if c.strip()]
+
+def _save_yt_channels(list_channels):
+    try:
+        with open(YT_CHANNELS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(list_channels, f, ensure_ascii=False, indent=2)
+    except Exception:
+        logging.exception('Failed saving YT_CHANNELS_FILE')
+
+YT_CHANNELS = _load_yt_channels()
+# YouTube pruning and retention settings (can be overridden via env)
+try:
+    YT_PRUNE_REMOVED = os.environ.get('YT_PRUNE_REMOVED', '1') in ('1', 'true', 'True')
+except Exception:
+    YT_PRUNE_REMOVED = True
+try:
+    YT_KEEP_LIMIT = int(os.environ.get('YT_KEEP_LIMIT', '50'))
+except Exception:
+    YT_KEEP_LIMIT = 50
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "")
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -70,6 +101,26 @@ def _read_key_from_env_file(path: str, key: str):
     except Exception:
         return None
     return None
+
+# YouTube resolution cache to avoid repeated lookups
+YT_CACHE_FILE = 'yt_channel_cache.json'
+def _load_yt_cache():
+    try:
+        if os.path.exists(YT_CACHE_FILE):
+            with open(YT_CACHE_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def _save_yt_cache(cache):
+    try:
+        with open(YT_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+    except Exception:
+        logging.exception('Failed saving YT cache')
+
+YT_CACHE = _load_yt_cache()
 
 if not BOT_TOKEN:
     token_from_env = _read_key_from_env_file('.env', 'BOT_TOKEN')
@@ -332,6 +383,12 @@ async def resolve_channel_id(identifier: str) -> str:
     # If identifier looks like a direct channel id
     if identifier.startswith("UC"):
         return identifier
+    # consult cache
+    try:
+        if identifier in YT_CACHE and YT_CACHE[identifier].get('channel_id'):
+            return YT_CACHE[identifier]['channel_id']
+    except Exception:
+        pass
     # If identifier is a full URL, extract path
     if identifier.startswith('http') or 'youtube.com' in identifier:
         try:
@@ -366,8 +423,16 @@ async def resolve_channel_id(identifier: str) -> str:
             # try to extract <yt:channelId>...</yt:channelId>
             m = re.search(r'<yt:channelId>(UC[0-9A-Za-z_-]+)</yt:channelId>', text)
             if m:
-                logging.info(f"Resolved channel id from user RSS for {identifier}: {m.group(1)}")
-                return m.group(1)
+                cid = m.group(1)
+                logging.info(f"Resolved channel id from user RSS for {identifier}: {cid}")
+                try:
+                    YT_CACHE[identifier] = {'channel_id': cid}
+                    if identifier.startswith('@'):
+                        YT_CACHE[identifier[1:]] = {'channel_id': cid}
+                    _save_yt_cache(YT_CACHE)
+                except Exception:
+                    pass
+                return cid
     except Exception as e:
         logging.debug(f"User RSS lookup failed for {identifier}: {e}")
     # fallback: fetch channel page and look for "channelId":"UC..." or meta tags
@@ -376,13 +441,25 @@ async def resolve_channel_id(identifier: str) -> str:
         html = await fetch_xml(url)
         m = re.search(r'"channelId"\s*:\s*"(UC[0-9A-Za-z_-]+)"', html)
         if m:
-            logging.info(f"Resolved channel id from HTML for {identifier}: {m.group(1)}")
-            return m.group(1)
+            cid = m.group(1)
+            logging.info(f"Resolved channel id from HTML for {identifier}: {cid}")
+            try:
+                YT_CACHE[identifier] = {'channel_id': cid}
+                _save_yt_cache(YT_CACHE)
+            except Exception:
+                pass
+            return cid
         # try alternative: look for /channel/UC... in links
         m2 = re.search(r'/channel/(UC[0-9A-Za-z_-]+)', html)
         if m2:
-            logging.info(f"Resolved channel id from HTML link for {identifier}: {m2.group(1)}")
-            return m2.group(1)
+            cid = m2.group(1)
+            logging.info(f"Resolved channel id from HTML link for {identifier}: {cid}")
+            try:
+                YT_CACHE[identifier] = {'channel_id': cid}
+                _save_yt_cache(YT_CACHE)
+            except Exception:
+                pass
+            return cid
     except Exception as e:
         logging.debug(f"HTML lookup failed for {identifier}: {e}")
 
@@ -399,34 +476,68 @@ async def resolve_channel_id(identifier: str) -> str:
                     mm = re.search(r'/channel/(UC[0-9A-Za-z_-]+)', m.group(1))
                     if mm:
                         logging.info(f"Resolved channel id via DDG for {identifier}: {mm.group(1)}")
+                        # persist to cache (both the input form and the possible @handle)
+                        try:
+                            YT_CACHE[identifier] = {'channel_id': mm.group(1)}
+                            if identifier.startswith('@'):
+                                YT_CACHE[identifier[1:]] = {'channel_id': mm.group(1)}
+                            _save_yt_cache(YT_CACHE)
+                        except Exception:
+                            pass
                         return mm.group(1)
     except Exception:
         pass
     return None
 
 
-async def fetch_youtube_videos(channel_id: str) -> list:
-    """Return list of (title, url) for channel uploads using the public RSS feed."""
+async def fetch_youtube_videos(channel_id: str):
+    """Return (channel_title, list_of_(title,url)) for channel uploads using the public RSS feed.
+    If channel_title can't be determined, returns (None, entries).
+    """
     if not channel_id:
-        return []
+        return None, []
     feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
     try:
         text = await fetch_xml(feed_url)
         root = ET.fromstring(text)
+        # feed title contains the channel name
+        ch_title_el = root.find('{http://www.w3.org/2005/Atom}title')
+        channel_title = (ch_title_el.text or '').strip() if ch_title_el is not None else None
+        # persist channel_title in cache
+        try:
+            if channel_title:
+                YT_CACHE[channel_id] = YT_CACHE.get(channel_id, {})
+                YT_CACHE[channel_id]['channel_id'] = channel_id
+                YT_CACHE[channel_id]['title'] = channel_title
+                _save_yt_cache(YT_CACHE)
+        except Exception:
+            pass
+
         entries = []
         for entry in root.findall('{http://www.w3.org/2005/Atom}entry'):
             title_el = entry.find('{http://www.w3.org/2005/Atom}title')
             link_el = entry.find('{http://www.w3.org/2005/Atom}link')
+            pub_el = entry.find('{http://www.w3.org/2005/Atom}published')
             if title_el is None:
                 continue
-            title = title_el.text or ""
+            title = (title_el.text or "").strip()
             url = link_el.attrib.get('href') if link_el is not None else None
+            # try to parse date and prefix the title with YYYY-MM-DD for readability
+            try:
+                if pub_el is not None and pub_el.text:
+                    dt = pub_el.text.strip()
+                    # expecting ISO 8601-ish format: 2025-10-09T12:34:56+00:00
+                    m = re.match(r"(\d{4}-\d{2}-\d{2})", dt)
+                    if m:
+                        title = f"[{m.group(1)}] {title}"
+            except Exception:
+                pass
             if url:
                 entries.append((title, url))
-        return entries
+        return channel_title, entries
     except Exception as e:
-        logging.warning(f"Failed fetching YouTube feed: {e}")
-        return []
+        logging.warning(f"Failed fetching YouTube feed for {channel_id}: {e}")
+        return None, []
 
 
 async def fetch_github_releases(repo: str) -> list:
@@ -494,6 +605,16 @@ def save_guides():
     except Exception as e:
         logging.error(f"Failed to save guides.json: {e}")
 
+def backup_guides():
+    try:
+        if os.path.exists('guides.json'):
+            import shutil, datetime
+            dst = f"guides.json.bak.{datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}"
+            shutil.copyfile('guides.json', dst)
+            logging.info(f"Backed up guides.json to {dst}")
+    except Exception:
+        logging.exception('Failed to backup guides.json')
+
 
 
 def merge_entries_into_category(category: str, entries: list):
@@ -501,9 +622,22 @@ def merge_entries_into_category(category: str, entries: list):
     if category not in GUIDES:
         GUIDES[category] = {}
     existing_norm = {normalize(k): k for k in GUIDES[category].keys()}
+    # also maintain a map of normalized URLs to keys so we can dedupe videos by URL
+    existing_urls = {}
+    for k, v in GUIDES[category].items():
+        if v:
+            existing_urls[normalize_url(v)] = k
     added = 0
     for title, url in entries:
         n = normalize(title)
+        # prefer to dedupe by URL when provided (YouTube videos have stable URLs)
+        if url:
+            nu = normalize_url(url)
+            if nu in existing_urls:
+                key = existing_urls[nu]
+                if GUIDES[category].get(key) != url:
+                    GUIDES[category][key] = url
+                continue
         if n in existing_norm:
             # if url changed, update
             key = existing_norm[n]
@@ -518,6 +652,8 @@ def merge_entries_into_category(category: str, entries: list):
                 key = f"{title} ({suffix})"
             GUIDES[category][key] = url
             existing_norm[n] = key
+            if url:
+                existing_urls[normalize_url(url)] = key
             added += 1
     return added
 
@@ -535,11 +671,79 @@ async def sync_sources():
                 if resolved:
                     cid = resolved
             logging.info(f"Fetching YouTube for channel identifier '{ch}' resolved to '{cid}'")
-            yt_entries = await fetch_youtube_videos(cid) if cid else []
-            logging.info(f"Fetched {len(yt_entries)} entries from YouTube channel {cid}")
+            channel_title, yt_entries = await fetch_youtube_videos(cid) if cid else (None, [])
+            logging.info(f"Fetched {len(yt_entries)} entries from YouTube channel {cid} ({channel_title})")
             if yt_entries:
-                added = merge_entries_into_category('YouTube - Видео', yt_entries)
+                # if we resolved cid from an input like a handle or URL, persist a stable UC id in yt_channels.json
+                try:
+                    # prefer storing UC id form for stability
+                    if cid and not ch.startswith('UC'):
+                        # replace the original entry in YT_CHANNELS with the UC id
+                        try:
+                            idx = YT_CHANNELS.index(ch)
+                            YT_CHANNELS[idx] = cid
+                            _save_yt_channels(YT_CHANNELS)
+                        except ValueError:
+                            pass
+                except Exception:
+                    pass
+
+                # create a per-channel category name for cleanliness
+                safe_name = channel_title or ch or cid or 'Видео'
+                # sanitize category name
+                safe_name = re.sub(r"[^0-9a-zA-Zа-яёА-ЯЁ _\-]", " ", safe_name).strip()
+                cat_name = f"YouTube - {safe_name}"
+
+                # optionally sort the entries by date prefix [YYYY-MM-DD] (newest first)
+                def _extract_date_pref(tu):
+                    t = tu[0]
+                    m = re.match(r"\[(\d{4}-\d{2}-\d{2})\]", t)
+                    if m:
+                        return m.group(1)
+                    return '1970-01-01'
+
+                try:
+                    yt_entries.sort(key=lambda x: _extract_date_pref(x), reverse=True)
+                except Exception:
+                    pass
+
+                added = merge_entries_into_category(cat_name, yt_entries)
                 total_added += added
+                # --- Prune removed videos if enabled: remove entries in this category whose URLs are not in the current feed ---
+                try:
+                    if YT_PRUNE_REMOVED:
+                        existing_map = {normalize_url(v): k for k, v in GUIDES.get(cat_name, {}).items() if v}
+                        feed_urls = {normalize_url(u) for (_, u) in yt_entries}
+                        removed_local = 0
+                        for nu, key in list(existing_map.items()):
+                            if nu and nu not in feed_urls:
+                                try:
+                                    del GUIDES[cat_name][key]
+                                    removed_local += 1
+                                except Exception:
+                                    pass
+                        if removed_local:
+                            logging.info(f"Pruned {removed_local} removed videos from {cat_name}")
+                except Exception:
+                    pass
+
+                # --- Enforce keep limit: keep newest N entries (by [YYYY-MM-DD] prefix) ---
+                try:
+                    keys = list(GUIDES.get(cat_name, {}).keys())
+                    def _key_date(k):
+                        m = re.match(r"\[(\d{4}-\d{2}-\d{2})\]", k)
+                        return m.group(1) if m else '1970-01-01'
+                    # sort keys newest first
+                    keys_sorted = sorted(keys, key=lambda x: _key_date(x), reverse=True)
+                    if len(keys_sorted) > YT_KEEP_LIMIT:
+                        for old in keys_sorted[YT_KEEP_LIMIT:]:
+                            try:
+                                del GUIDES[cat_name][old]
+                            except Exception:
+                                pass
+                        logging.info(f"Trimmed {len(keys_sorted)-YT_KEEP_LIMIT} old videos from {cat_name}")
+                except Exception:
+                    pass
         summary['youtube_added'] = total_added
     except Exception as e:
         logging.warning(f"YouTube sync failed: {e}")
@@ -1357,8 +1561,17 @@ async def handle_aiguide(message: types.Message):
     ml_model = None
     if use_ml:
         try:
-            from sentence_transformers import SentenceTransformer
-            ml_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+            # dynamic import to avoid static analyzer false-positives and import-time errors
+            import importlib, importlib.util
+            if importlib.util.find_spec('sentence_transformers'):
+                st = importlib.import_module('sentence_transformers')
+                SentenceTransformer = getattr(st, 'SentenceTransformer', None)
+                if SentenceTransformer is not None:
+                    ml_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+                else:
+                    ml_model = None
+            else:
+                ml_model = None
         except Exception:
             ml_model = None
 
@@ -1459,6 +1672,126 @@ async def bot_status(message: types.Message):
     await message.reply(text)
 
 
+@dp.message(Command("sync"))
+async def manual_sync(message: types.Message):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    await message.reply("🔄 Запускаю синхронизацию источников...")
+    try:
+        summary = await sync_sources()
+        await message.reply(f"✅ Синхронизация завершена. YouTube добавлено: {summary.get('youtube_added',0)}, GitHub добавлено: {summary.get('github_added',0)}")
+    except Exception as e:
+        logging.exception(f"Manual sync failed: {e}")
+        await message.reply(f"❌ Ошибка при синхронизации: {e}")
+
+
+@dp.message(Command("yt_add"))
+async def yt_add(message: types.Message, command: CommandObject):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    arg = command.args.strip() if command.args else ''
+    if not arg:
+        await message.reply("Использование: /yt_add <channel_url_or_handle_or_UC_id>")
+        return
+    if arg in YT_CHANNELS:
+        await message.reply("Канал уже в списке.")
+        return
+    YT_CHANNELS.append(arg)
+    _save_yt_channels(YT_CHANNELS)
+    await message.reply(f"Добавил канал: {arg}")
+
+
+@dp.message(Command("yt_remove"))
+async def yt_remove(message: types.Message, command: CommandObject):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    arg = command.args.strip() if command.args else ''
+    if not arg:
+        await message.reply("Использование: /yt_remove <channel_url_or_handle_or_UC_id>")
+        return
+    try:
+        YT_CHANNELS.remove(arg)
+        _save_yt_channels(YT_CHANNELS)
+        await message.reply(f"Удалил канал: {arg}")
+    except ValueError:
+        await message.reply("Канал не найден в списке.")
+
+
+@dp.message(Command("yt_list"))
+async def yt_list(message: types.Message):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    if not YT_CHANNELS:
+        await message.reply("Список YT каналов пуст")
+        return
+    text = "YouTube каналы в мониторинге:\n"
+    for ch in YT_CHANNELS:
+        text += f"• {ch}\n"
+    await message.reply(text)
+
+
+@dp.message(Command("yt_cache"))
+async def yt_cache_cmd(message: types.Message):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    # show a compact cache view
+    try:
+        items = list(YT_CACHE.items())[:40]
+        text = "YT cache (sample):\n"
+        for k, v in items:
+            text += f"{k} -> {v.get('channel_id','?')} ({v.get('title','')})\n"
+        await message.reply(text)
+    except Exception as e:
+        await message.reply(f"Ошибка при чтении cache: {e}")
+
+
+@dp.message(Command("yt_prune_on"))
+async def yt_prune_on(message: types.Message):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    global YT_PRUNE_REMOVED
+    YT_PRUNE_REMOVED = True
+    await message.reply("✅ Прuning включён: удалённые видео будут удаляться при sync.")
+
+
+@dp.message(Command("yt_prune_off"))
+async def yt_prune_off(message: types.Message):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    global YT_PRUNE_REMOVED
+    YT_PRUNE_REMOVED = False
+    await message.reply("✅ Pruning выключен: удалённые видео НЕ будут удаляться при sync.")
+
+
+@dp.message(Command("yt_set_limit"))
+async def yt_set_limit(message: types.Message, command: CommandObject):
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    arg = command.args.strip() if command.args else ''
+    if not arg or not arg.isdigit():
+        await message.reply("Использование: /yt_set_limit <число> — сколько видео хранить на канал")
+        return
+    global YT_KEEP_LIMIT
+    YT_KEEP_LIMIT = int(arg)
+    await message.reply(f"✅ Новый лимит хранения видео установлен: {YT_KEEP_LIMIT}")
+
+
 @dp.message(Command("restart_polling"))
 async def restart_polling_cmd(message: types.Message):
     user_id = message.from_user.id
@@ -1486,8 +1819,29 @@ async def main():
         async def handle_health(request):
             return web.Response(text="ok")
 
+        async def handle_yt_latest(request):
+            # collect latest N videos across YouTube categories
+            try:
+                items = []
+                for cat, entries in GUIDES.items():
+                    if cat.startswith('YouTube -'):
+                        for title, url in entries.items():
+                            items.append((cat, title, url))
+                # sort by date prefix in title
+                def _dkey(t):
+                    m = re.match(r"\[(\d{4}-\d{2}-\d{2})\]", t[1])
+                    return m.group(1) if m else '1970-01-01'
+                items.sort(key=lambda x: _dkey(x), reverse=True)
+                html = '<html><body><h1>Latest YouTube videos</h1><ul>'
+                for cat, title, url in items[:100]:
+                    html += f'<li><strong>{cat}</strong>: <a href="{url}">{title}</a></li>'
+                html += '</ul></body></html>'
+                return web.Response(text=html, content_type='text/html')
+            except Exception:
+                return web.Response(text='error', status=500)
+
         app = web.Application()
-        app.add_routes([web.get('/health', handle_health)])
+        app.add_routes([web.get('/health', handle_health), web.get('/yt_latest', handle_yt_latest)])
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, '0.0.0.0', int(os.environ.get('PORT', 8080)))
