@@ -190,7 +190,23 @@ def normalize_url(url: str) -> str:
         scheme = u.scheme.lower() if u.scheme else 'https'
         netloc = u.netloc.lower()
         path = u.path.rstrip('/')
-        # ignore query/fragment for dedupe
+        # Special-case YouTube URLs: preserve video id
+        if 'youtu.be' in netloc:
+            # short link: https://youtu.be/VIDEOID
+            vid = u.path.lstrip('/')
+            if vid:
+                return f"https://www.youtube.com/watch?v={vid}"
+        if 'youtube.com' in netloc or 'youtube-nocookie.com' in netloc:
+            qs = urllib.parse.parse_qs(u.query)
+            if 'v' in qs and qs['v']:
+                return f"https://www.youtube.com/watch?v={qs['v'][0]}"
+            # shorts format: /shorts/VIDEOID
+            parts = [p for p in path.split('/') if p]
+            if parts and parts[0] == 'shorts' and len(parts) >= 2:
+                return f"https://www.youtube.com/shorts/{parts[1]}"
+            # keep channel or other path
+            return f"https://{netloc}{path}"
+        # Default behaviour for other sites: keep scheme + netloc + path (drop query/fragment)
         return f"{scheme}://{netloc}{path}"
     except Exception:
         return url.strip().lower()
