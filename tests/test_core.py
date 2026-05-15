@@ -11,7 +11,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Patch BOT_TOKEN before importing main to avoid Bot() init error
-os.environ.setdefault("BOT_TOKEN", "0000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+os.environ.setdefault("BOT_TOKEN", "TEST_TOKEN_PLACEHOLDER_DO_NOT_USE")
 
 
 class TestNormalizeUrl:
