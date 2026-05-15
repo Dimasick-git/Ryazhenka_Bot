@@ -1,130 +1,238 @@
-# 🤖 Ryazhenka Bot: Интеллектуальный Telegram-бот для сообщества Nintendo Switch
+# Ryazhenka Bot: Intelligent Guide Management Platform for Nintendo Switch Community
 
-Ryazhenka Bot — это многофункциональный Telegram-бот, разработанный для упрощения доступа к информации и автоматизации рутинных задач в сообществе Nintendo Switch. Бот предоставляет быстрый поиск гайдов, отслеживание обновлений и централизованную базу знаний.
+Ryazhenka Bot is a comprehensive Telegram bot and web dashboard platform designed to streamline guide management, user engagement, and community knowledge sharing for the Nintendo Switch modding community. The system combines intelligent search capabilities, automated content synchronization, and advanced analytics to provide a structured, professional solution for managing guides across multiple sources.
 
-## ✨ Основные возможности
+## Core Features
 
-*   **Интеллектуальный поиск**: Быстрый и точный поиск гайдов, новостей и ресурсов по ключевым словам.
-*   **Отслеживание обновлений**: Автоматические уведомления о новых видео на YouTube-каналах и релизах на GitHub.
-*   **База знаний**: Централизованное хранилище полезной информации для участников сообщества.
-*   **Управление доступом**: Разграничение прав для администраторов и пользователей, защита от спама.
-*   **Гибкая настройка**: Возможность добавления новых источников информации и модерации контента.
+### Guide Management System
 
-## 🚀 Команды бота
+The platform provides a centralized interface for managing guides across multiple categories. Administrators can create, edit, and organize guides with support for bilingual content (English and Russian). Each guide includes metadata such as creation date, update timestamp, rating statistics, and view counts. The system supports multiple source types including YouTube videos, GitHub releases, and manually added guides.
 
-| Команда          | Описание                                  | Пример использования    |
-| :--------------- | :---------------------------------------- | :---------------------- |
-| `/start`         | Запуск бота и приветственное сообщение    | `/start`                |
-| `/help`          | Отображение списка доступных команд       | `/help`                 |
-| `/search <запрос>` | Поиск информации по ключевым словам       | `/search atmosphere`    |
-| `/subscribe`     | Подписка на уведомления о новых релизах   | `/subscribe`            |
-| `/unsubscribe`   | Отписка от уведомлений                    | `/unsubscribe`          |
-| `/settings`      | Настройка параметров бота                 | `/settings`             |
-| `/sync`          | Принудительная синхронизация данных       | `/sync`                 |
-| `/stats`         | Просмотр статистики использования бота    | `/stats`                |
-| `/cache_clear`   | Очистка кэша бота                         | `/cache_clear`          |
+### Multi-Language Support
 
-## 🛠️ Технический стек
+The dashboard interface supports both English and Russian languages with a language toggle accessible within the interface. All user-facing text, navigation menus, and documentation are available in both languages. Users can set their preferred language, which persists across sessions.
 
-Проект разработан с использованием следующих технологий:
+### YouTube Channel Monitoring
 
-*   **Основной**: Python 3.9+, `python-telegram-bot` (20.x), `aiohttp` (для асинхронных HTTP-запросов).
-*   **Парсинг**: `feedparser` (для YouTube RSS), `BeautifulSoup4` (для GitHub Releases).
-*   **Поиск**: `fuzzywuzzy` (нечёткий поиск), `python-Levenshtein` (оптимизация поиска).
-*   **Деплой**: Railway (хостинг и CI/CD), `python-dotenv` (управление переменными окружения).
+The system automatically monitors configured YouTube channels for new videos. Administrators can add or remove channels through the dashboard. The platform tracks synchronization status, video counts, and last sync timestamps. New videos are automatically logged and can trigger Discord notifications.
 
-## ☁️ Развертывание на Railway
+### Guide Rating System
 
-### Быстрый деплой
+Users can upvote or downvote guides to indicate usefulness. The system calculates aggregate ratings and sorts search results by rating. Rating statistics are displayed alongside each guide, providing social proof and helping users identify the most valuable content.
 
-Для быстрого развертывания используйте кнопку:
+### Advanced Analytics
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/YOUR_TEMPLATE_ID)
+The analytics dashboard provides comprehensive insights into user behavior and content performance. Metrics include search query history, popular guides by view count and rating, and user activity over time. Date range filtering allows administrators to analyze trends across specific periods. Analytics data can be exported for further analysis.
 
-### Ручной деплой
+### LLM-Powered Recommendations
 
-1.  **Создайте аккаунт на [Railway](https://railway.app/)**.
-2.  **Инициализируйте новый проект**: `railway init`.
-3.  **Добавьте переменные окружения** в Railway Dashboard:
-    *   `BOT_TOKEN`: Токен вашего Telegram-бота.
-    *   `ADMIN_IDS`: Список ID администраторов через запятую.
-    *   `YT_CHANNELS`: Список YouTube-каналов для отслеживания.
-    *   `ALLOWED_DOMAINS`: Список разрешенных доменов для парсинга.
-    *   `PORT`: Порт для работы бота (по умолчанию: `8080`).
-4.  **Запустите деплой**: `railway up`.
+The platform uses language models to generate personalized guide recommendations for each user based on their search history and rating patterns. Recommendations are cached for seven days to optimize performance. The system also automatically tags new guides with relevant categories using LLM analysis, reducing manual categorization work.
 
-### Конфигурация Railway
+### Discord Integration
 
-```json
-{
-  "$schema": "https://railway.app/railway.schema.json",
-  "build": {
-    "builder": "NIXPACKS"
-  },
-  "deploy": {
-    "startCommand": "python main.py",
-    "restartPolicyType": "ALWAYS"
-  }
-}
+New guides, YouTube videos, and GitHub releases trigger formatted notifications sent to a configured Discord channel. Notifications include three key fields: title, source, and direct link. The notification system maintains a log of all sent messages and handles failures gracefully with error reporting.
+
+### REST API for Third-Party Integration
+
+The platform exposes a comprehensive REST API for third-party applications. API endpoints cover guide management, category browsing, YouTube channel monitoring, and analytics retrieval. Authentication uses API keys that can be generated with configurable expiration dates. All endpoints are documented with request parameters and example usage.
+
+### Bot Settings Panel
+
+Administrators can configure critical bot parameters through the settings interface. Configuration options include sync interval (in seconds), allowed domains for content sources, administrator IDs for access control, logging level, and Discord webhook URL for notifications.
+
+## Technical Architecture
+
+### Database Schema
+
+The system uses MySQL with Drizzle ORM for data persistence. The schema includes tables for users, guides, categories, ratings, YouTube channels, search analytics, activity logs, bot settings, Discord notifications, recommendations, and API keys. All tables include appropriate indexes and constraints for data integrity.
+
+### Backend Infrastructure
+
+The backend is built with Express.js and tRPC for type-safe API procedures. All database queries are centralized in query helpers that handle common operations. Authentication uses Manus OAuth with role-based access control (admin/user). Protected procedures enforce authorization checks before executing sensitive operations.
+
+### Frontend Design System
+
+The user interface follows the International Typographic Style with a pristine white canvas, bold red accents, and crisp black sans-serif typography. The design emphasizes clean asymmetric layouts, fine black divider lines, and generous negative space. All components use a strict grid system with precise spacing and alignment.
+
+### Internationalization
+
+The i18n system uses a centralized translation file with support for English and Russian. Language context is provided to all React components, allowing dynamic language switching. User language preferences are persisted in the database and local storage.
+
+## Installation and Setup
+
+### Prerequisites
+
+- Node.js 18 or higher
+- MySQL 8.0 or higher
+- Telegram Bot Token (from BotFather)
+- Manus OAuth credentials
+- Discord webhook URL (optional, for notifications)
+
+### Environment Configuration
+
+Create a `.env` file with the following variables:
+
+```
+DATABASE_URL=mysql://user:password@localhost:3306/ryazhenka
+BOT_TOKEN=your_telegram_bot_token
+ADMIN_IDS=123456789,987654321
+ALLOWED_DOMAINS=youtube.com,github.com
+SYNC_INTERVAL_SECONDS=3600
+LOG_LEVEL=INFO
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
-## 🔒 Безопасность
+### Database Setup
 
-*   **Whitelist доменов**: Бот взаимодействует только с доверенными источниками, указанными в `ALLOWED_DOMAINS`.
-*   **Управление доступом**: Команды, предназначенные только для администраторов, защищены специальными декораторами. Реализован Rate Limiting для предотвращения спама.
-*   **Валидация ввода**: Все пользовательские запросы проходят валидацию для обеспечения безопасности и корректной работы.
-*   **Логирование**: Все действия бота логируются для мониторинга и отладки.
+```bash
+pnpm install
+pnpm drizzle-kit generate
+pnpm db:push
+```
 
-## 💡 Примеры использования
+### Development Server
 
-1.  **Поиск гайдов по установке Atmosphere**:
-    ```
-    /search atmosphere install
-    ```
-    Бот найдет релевантные видео и статьи.
-2.  **Отслеживание новых релизов**: Бот автоматически уведомляет о новых видео на YouTube-каналах и релизах на GitHub.
-3.  **База знаний для сообщества**: Администраторы могут добавлять новые источники, модерировать контент и получать статистику использования.
+```bash
+pnpm dev
+```
 
-## 🗺️ Дорожная карта
+The development server runs on `http://localhost:3000` with hot module reloading enabled.
 
-### Ближайшие планы
+### Production Build
 
-*   [ ] Многоязычная поддержка (EN, RU, JP).
-*   [ ] Интеграция с Discord.
-*   [ ] Расширенная аналитика.
-*   [ ] Система рекомендаций на основе машинного обучения.
+```bash
+pnpm build
+pnpm start
+```
 
-### Долгосрочные планы
+## API Endpoints
 
-*   [ ] Веб-интерфейс для управления ботом.
-*   [ ] Система рейтинга гайдов.
-*   [ ] Уведомления о новых гайдах.
-*   [ ] API для сторонних приложений.
+| Method | Endpoint | Description | Authentication |
+|--------|----------|-------------|-----------------|
+| GET | `/api/trpc/guides.list` | List all guides with pagination | Optional |
+| POST | `/api/trpc/guides.create` | Create a new guide | Admin |
+| POST | `/api/trpc/guides.update` | Update an existing guide | Admin |
+| DELETE | `/api/trpc/guides.delete` | Delete a guide | Admin |
+| POST | `/api/trpc/guides.rate` | Rate a guide (upvote/downvote) | User |
+| GET | `/api/trpc/categories.list` | List all categories | Public |
+| POST | `/api/trpc/categories.create` | Create a new category | Admin |
+| GET | `/api/trpc/youtubeChannels.list` | List monitored YouTube channels | Admin |
+| POST | `/api/trpc/youtubeChannels.add` | Add a YouTube channel | Admin |
+| POST | `/api/trpc/youtubeChannels.remove` | Remove a YouTube channel | Admin |
+| GET | `/api/trpc/analytics.searchQueries` | Get search query analytics | Admin |
+| POST | `/api/trpc/analytics.logSearch` | Log a search query | Public |
+| GET | `/api/trpc/settings.get` | Get a bot setting | Admin |
+| POST | `/api/trpc/settings.set` | Update a bot setting | Admin |
+| GET | `/api/trpc/recommendations.get` | Get personalized recommendations | User |
+| GET | `/api/trpc/apiKeys.list` | List user API keys | User |
+| POST | `/api/trpc/apiKeys.generate` | Generate a new API key | User |
 
-## 🙏 Благодарности
+## Authentication
 
-### Технологии
+All protected endpoints require authentication. For web dashboard access, use Manus OAuth. For API access, include the API key in the Authorization header:
 
-*   [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) — основной фреймворк.
-*   [fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy) — библиотека для нечёткого поиска.
-*   [Railway](https://railway.app/) — платформа для хостинга и деплоя.
+```
+Authorization: Bearer YOUR_API_KEY
+```
 
-### Вдохновение
+## Deployment
 
-*   Сообщество Nintendo Switch Homebrew.
-*   [NH Switch Guide](https://nh-server.github.io/switch-guide/).
-*   [Atmosphere](https://github.com/Atmosphere-NX/Atmosphere).
+### Railway Deployment
 
-### Автор
+The application is configured for deployment on Railway with the following setup:
 
-Создано [@Dimasick-git](https://github.com/Dimasick-git).
+1. Connect your GitHub repository to Railway
+2. Set environment variables in the Railway dashboard
+3. Railway automatically builds and deploys on each push to main branch
+4. The application runs as a Node.js service with automatic restarts
 
-## 📄 Лицензия
+### Custom Deployment
 
-Проект распространяется под лицензией MIT. Подробности доступны в файле [LICENSE](LICENSE).
+For other deployment platforms, ensure the following:
 
-## 📞 Контакты и поддержка
+- Node.js 18+ runtime
+- MySQL database connection
+- Environment variables properly configured
+- Port 3000 exposed for the application
 
-*   **Сообщить об ошибке**: [Создайте Issue](https://github.com/Dimasick-git/Ryazhenka_Bot/issues).
-*   **Обсуждения**: [Присоединяйтесь к обсуждениям](https://github.com/Dimasick-git/Ryazhenka_Bot/discussions).
-*   **Поддержать проект**: Поставьте звезду на GitHub!
+## Performance Optimization
+
+The system implements several performance optimizations:
+
+- Database query result caching for frequently accessed data
+- LLM recommendation caching with 7-day expiration
+- Efficient pagination for large result sets
+- Indexed database queries for fast lookups
+- Lazy loading of components in the React frontend
+
+## Security Considerations
+
+- All admin operations require role-based authorization checks
+- API keys have configurable expiration dates
+- Database connections use SSL/TLS encryption
+- Input validation on all user-submitted data
+- Rate limiting on search and API endpoints
+- Secure session management with HTTP-only cookies
+
+## Monitoring and Logging
+
+The system maintains comprehensive logs of all operations:
+
+- Activity log tracks user actions (create, update, delete, rate)
+- Search query log records all searches for analytics
+- Discord notification log tracks message delivery status
+- Error logging captures exceptions with full stack traces
+- Log level configuration allows adjustment of verbosity
+
+## Troubleshooting
+
+### Database Connection Issues
+
+Verify the DATABASE_URL environment variable and ensure MySQL is running and accessible. Check firewall rules and network connectivity.
+
+### Discord Notifications Not Sending
+
+Verify the DISCORD_WEBHOOK_URL is correct and the webhook endpoint is still active. Check the Discord notification log for error messages.
+
+### LLM Features Not Working
+
+Ensure the LLM API credentials are properly configured. Check server logs for LLM API errors. Verify network connectivity to the LLM service.
+
+### Performance Issues
+
+Check database query performance using slow query logs. Consider adding indexes for frequently filtered columns. Review memory usage and consider scaling resources.
+
+## Future Enhancements
+
+The roadmap includes the following planned features:
+
+- Discord bot integration for direct Discord server access
+- Advanced machine learning-based recommendation engine
+- Webhook support for external service integrations
+- Mobile application for iOS and Android
+- Real-time collaboration features for guide editing
+- Advanced search with full-text indexing
+- Guide versioning and change history
+- User reputation system and badges
+
+## Contributing
+
+Contributions are welcome. Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with clear commit messages
+4. Submit a pull request with description of changes
+5. Ensure all tests pass and code follows the style guide
+
+## License
+
+This project is distributed under the MIT License. See the LICENSE file for complete terms.
+
+## Support and Contact
+
+For bug reports, feature requests, or general questions, please use the GitHub Issues page. For urgent matters, contact the project maintainers directly through the GitHub repository.
+
+## Acknowledgments
+
+This project builds upon the excellent work of the Nintendo Switch Homebrew community. Special thanks to the Atmosphere project and NH Switch Guide for inspiration and reference materials.
