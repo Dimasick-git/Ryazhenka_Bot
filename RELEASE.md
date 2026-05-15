@@ -3,7 +3,7 @@ Release checklist
 1. Make sure you do NOT commit your .env with BOT_TOKEN. Use `.env.example` as a template.
 2. To set BOT_TOKEN locally (PowerShell):
 
-   .\scripts\set_bot_token.ps1 -Token "8404504215:AAEnVW96T4Jg7DzC5hpwYwuPDiQluChkMMk"
+   .\scripts\set_bot_token.ps1 -Token "YOUR_BOT_TOKEN_HERE"
 
    Or run the script without args and paste the token interactively.
 
