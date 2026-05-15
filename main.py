@@ -790,24 +790,28 @@ def create_categories_keyboard():
 
 @dp.message(Command("start"))
 async def start(message: types.Message):
+    total = sum(len(g) for g in GUIDES.values())
     await message.reply(
-        "👋 Привет! Я бот-помощник по прошивке Nintendo Switch.\n\n"
-        "🔍 Часто используемые команды:\n"
-        "• /guide <тема> — найти гайд (fuzzy search)\n"
-        "• /aiguide <текст> — AI-подобный поиск по гайдам (локально)\n"
-        "• /all — показать все категории\n"
-        "• /help — полный список команд\n\n"
-        "📚 Выберите категорию ниже:",
+        "🛠️ *Ryazhenka Bot* — инженерный помощник по прошивке Nintendo Switch\n"
+        f"{'─' * 35}\n"
+        f"📚 Загружено гайдов: *{total}* в *{len(GUIDES)}* категориях\n\n"
+        "⚙️ *Основные команды:*\n"
+        "🔍 /guide `<тема>` — найти гайд (fuzzy search)\n"
+        "🧠 /aiguide `<текст>` — умный поиск (BM25 + fuzzy)\n"
+        "📋 /all — все категории\n"
+        "📖 /help — полный список команд\n\n"
+        "📂 *Выберите категорию ниже:*",
+        parse_mode='Markdown',
         reply_markup=create_categories_keyboard()
     )
 
 @dp.message(Command("all"))
 async def show_all(message: types.Message):
     if not GUIDES:
-        await message.reply("❌ База гайдов пуста")
+        await message.reply("❌ База гайдов пуста 📭")
         return
     
-    text = "📚 *Все категории:*\n\n"
+    text = "📚 *Все категории* 🗂️:\n\n"
     total_guides = 0
     
     for category, guides in GUIDES.items():
@@ -815,8 +819,8 @@ async def show_all(message: types.Message):
         total_guides += count
         text += f"{category} — {count} гайдов\n"
     
-    text += f"\n📝 Всего: {total_guides} гайдов в {len(GUIDES)} категориях\n\n"
-    text += "Используйте /guide <название> для поиска или выберите категорию:"
+    text += f"\n📝 Всего 📊: {total_guides} гайдов в {len(GUIDES)} категориях\n\n"
+    text += "Используйте /guide <название> для поиска 🔎 или выберите категорию 📁:"
     
     await safe_send(message, text, reply_markup=create_categories_keyboard())
 
@@ -837,10 +841,10 @@ async def handle_category(callback_query: types.CallbackQuery):
     for key, url in guides.items():
         text += f"🔹 [{key}]({url})\n"
 
-    text += f"\n📝 Всего: {len(guides)} гайдов\n\n"
+    text += f"\n📝 Всего 📊: {len(guides)} гайдов\n\n"
     # navigation
     kb_nav = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_categories")]
+        [InlineKeyboardButton(text="⬅ Назад 🔙", callback_data="back_to_categories")]
     ])
     
     try:
@@ -853,16 +857,16 @@ async def handle_category(callback_query: types.CallbackQuery):
 @dp.callback_query(F.data == "back_to_categories")
 async def back_to_categories(callback_query: types.CallbackQuery):
     text = (
-        "👋 Привет! Я бот-помощник по прошивке Nintendo Switch.\n\n"
+        "👋 Привет! Я инженерный бот-помощник по прошивке Nintendo Switch 🛠️\n\n"
         "🔍 Команды:\n"
         "• /guide <тема> — найти гайд (fuzzy search)\n"
         "• /all — показать все категории\n\n"
-        "📚 Выберите категорию ниже:"
+        "📚 Выберите категорию ниже 📂:"
     )
     
     try:
         await callback_query.message.edit_text(text, reply_markup=create_categories_keyboard())
-    except:
+    except Exception:
         await callback_query.message.answer(text, reply_markup=create_categories_keyboard())
     
     await callback_query.answer()
@@ -900,7 +904,7 @@ async def send_guide(message: types.Message, command: CommandObject):
             choices.append((title, category, url))
 
     if not choices:
-        await message.reply("❌ База гайдов пуста")
+        await message.reply("❌ База гайдов пуста 📭")
         return
 
     # build mapping for process.extract
@@ -957,11 +961,11 @@ async def send_guide(message: types.Message, command: CommandObject):
 
     if not results:
         await message.reply(
-            "❌ Не нашёл гайд. Попробуйте:\n"
+            "❌ Не нашёл гайд ⚠️. Попробуйте 💡:\n"
             "• /guide atmosphere\n"
             "• /guide battery\n"
             "• /guide emunand\n\n"
-            "Или используйте /all чтобы увидеть все категории"
+            "Или используйте /all чтобы увидеть все категории 📋"
         )
         return
 
@@ -995,15 +999,17 @@ async def send_guide(message: types.Message, command: CommandObject):
             # store conversational context so callback can open the url
             kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {t}", callback_data=f"open|{t}")])
             DIALOG_CTX[t] = {'title': t, 'category': cat, 'url': url}
+            DIALOG_CTX_TIME[t] = time.time()
+            _cleanup_dialog_ctx()
         await message.reply(text, parse_mode="Markdown", reply_markup=kb)
         return
 
     await message.reply(
-        "❌ Не нашёл гайд. Попробуйте:\n"
+        "❌ Не нашёл гайд ⚠️. Попробуйте 💡:\n"
         "• /guide atmosphere\n"
         "• /guide battery\n"
         "• /guide emunand\n\n"
-        "Или используйте /all чтобы увидеть все категории"
+        "Или используйте /all чтобы увидеть все категории 📋"
     )
 
 
@@ -1012,15 +1018,6 @@ async def send_guide_ru(message: types.Message, command: CommandObject):
     await send_guide(message, command)
 
 
-@dp.message(Command("sync"))
-async def manual_sync(message: types.Message, command: CommandObject):
-    user_id = message.from_user.id
-    if ADMIN_IDS and user_id not in ADMIN_IDS:
-        await message.reply("❌ У вас нет прав на выполнение синхронизации.")
-        return
-    await message.reply("🔁 Запускаю синхронизацию источников...")
-    summary = await sync_sources()
-    await message.reply(f"✅ Синхронизация завершена. YouTube добавлено: {summary['youtube_added']}, GitHub добавлено: {summary['github_added']}")
 
 
 @dp.message(Command("purge_autoguides"))
@@ -1039,7 +1036,7 @@ async def purge_autoguides(message: types.Message):
     GUIDES[archive].update(GUIDES[cat])
     del GUIDES[cat]
     save_guides()
-    await message.reply(f"🗑️ Категория '{cat}' перемещена в '{archive}' и удалена из основных категорий.")
+    await message.reply(f"🗑️ Категория 📦 '{cat}' перемещена в '{archive}' и удалена из основных категорий.")
 
 
 @dp.message(Command("cleanup_duplicates"))
@@ -1048,21 +1045,21 @@ async def cleanup_duplicates_cmd(message: types.Message):
     if ADMIN_IDS and user_id not in ADMIN_IDS:
         await message.reply("❌ У вас нет прав на выполнение этой операции.")
         return
-    await message.reply("🧹 Выполняю очистку дубликатов...")
+    await message.reply("🧹 Выполняю очистку дубликатов 🧽...")
     removed = dedupe_guides()
-    await message.reply(f"✅ Очистка завершена. Удалено дубликатов: {removed}")
+    await message.reply(f"✅ Очистка завершена ✨. Удалено дубликатов: {removed}")
 
 
 @dp.message(Command("recommend"))
 async def recommend_repos(message: types.Message):
     # Show recommended repos for the project's author
     user = 'Dimasick-git'
-    await message.reply(f"🔎 Получаю публичные репозитории {user}...")
+    await message.reply(f"🔎 Получаю публичные репозитории 📡 {user}...")
     repos = await fetch_github_repos(user, limit=20)
     if not repos:
         await message.reply("❌ Не удалось получить репозитории.")
         return
-    text = f"📦 Рекомендуемые репозитории {user}:\n\n"
+    text = f"📦 Рекомендуемые репозитории 🛠️ {user}:\n\n"
     for name, url, desc in repos[:15]:
         text += f"• [{name}]({url}) — {desc}\n"
     await safe_send(message, text, disable_web_page_preview=True)
@@ -1075,33 +1072,49 @@ async def admin_help(message: types.Message):
         await message.reply("❌ У вас нет прав на выполнение этой операции.")
         return
     text = (
-        "🔐 Админские команды:\n"
-        "• /sync — Запустить синхронизацию YouTube/GitHub\n"
-        "• /purge_autoguides — Переместить автогайды в архив\n"
-        "• /toggle_autoresolve — Вкл/выкл авто-резолв и добавление\n"
-        "• /cleanup_duplicates — Удалить повторяющиеся ссылки\n"
-        "• /recommend — Показать репозитории Dimasick-git\n"
+        "🛡️ *Админские команды* 🔐\n"
+        f"{'─' * 35}\n"
+        "📊 *Данные и синхронизация:*\n"
+        "🔄 /sync — Синхронизация YouTube/GitHub\n"
+        "🗑️ /purge\_autoguides — Автогайды в архив\n"
+        "🧹 /cleanup\_duplicates — Удалить дубликаты\n"
+        "🔀 /toggle\_autoresolve — Авто-резолв ссылок\n\n"
+        "📺 *YouTube каналы:*\n"
+        "➕ /yt\_add `<url>` — Добавить канал\n"
+        "➖ /yt\_remove `<url>` — Удалить канал\n"
+        "📝 /yt\_list — Список каналов\n"
+        "🗃️ /yt\_cache — Показать кэш\n"
+        "✂️ /yt\_prune\_on / /yt\_prune\_off — Прунинг\n"
+        "📌 /yt\_set\_limit `<N>` — Лимит видео\n\n"
+        "⚙️ *Система:*\n"
+        "📊 /status — Статус бота\n"
+        "🔁 /restart\_polling — Сброс webhook\n"
+        "📦 /recommend — Репозитории Dimasick-git\n"
     )
-    await message.reply(text)
+    await message.reply(text, parse_mode='Markdown')
 
 
 @dp.message(Command("help"))
 async def help_command(message: types.Message):
     text = (
-        "📘 Полный список команд:\n"
-        "• /start — Приветствие и быстрые ссылки\n"
-        "• /all — Показать все категории\n"
-        "• /guide <тема> — Найти гайд (fuzzy search)\n"
-        "• /aiguide <текст> — AI-подобный поиск (локально, быстрый)\n"
-        "• /sync — (админ) Синхронизация источников\n"
-        "• /purge_autoguides — (админ) Переместить автогайды в архив\n"
-        "• /cleanup_duplicates — (админ) Удалить дубликаты\n"
-        "• /recommend — Показать репозитории автора\n"
-        "• /status — (админ) Статус бота и webhook\n"
-        "• /restart_polling — (админ) Удалить webhook и предложить перезапуск\n"
-        "• /admin_help — Список админ-команд\n"
+        "📘 *Полный список команд* 📜\n"
+        f"{'─' * 35}\n"
+        "📌 *Основные:*\n"
+        "👋 /start — Приветствие и быстрые ссылки\n"
+        "📋 /all — Показать все категории\n"
+        "🔍 /guide `<тема>` — Найти гайд (fuzzy search)\n"
+        "🧠 /aiguide `<текст>` — Умный поиск (BM25 + fuzzy)\n"
+        "📦 /recommend — Репозитории автора\n\n"
+        "🔐 *Админ-команды:*\n"
+        "🔄 /sync — Синхронизация YouTube/GitHub\n"
+        "🗑️ /purge\_autoguides — Автогайды в архив\n"
+        "🧹 /cleanup\_duplicates — Удалить дубликаты\n"
+        "⚙️ /status — Статус бота\n"
+        "🔁 /restart\_polling — Сброс webhook\n"
+        "📺 /yt\_add `/yt\_remove /yt\_list` — YouTube каналы\n"
+        "🛡️ /admin\_help — Список админ-команд\n"
     )
-    await message.reply(text)
+    await message.reply(text, parse_mode='Markdown')
 
 def _tokenize(text: str) -> list:
     if not text:
@@ -1537,6 +1550,16 @@ def _search_guides(query: str, top_n: int = 10):
 
 # conversational suggestion storage per chat_id
 DIALOG_CTX = {}
+import time
+DIALOG_CTX_TIME = {}
+
+def _cleanup_dialog_ctx():
+    now = time.time()
+    to_delete = [k for k, v in DIALOG_CTX_TIME.items() if now - v > 3600] # 1 hour
+    for k in to_delete:
+        DIALOG_CTX.pop(k, None)
+        DIALOG_CTX_TIME.pop(k, None)
+
 
 
 
@@ -1545,13 +1568,13 @@ DIALOG_CTX = {}
 async def handle_aiguide(message: types.Message):
     query = message.text[len('/aiguide'):].strip()
     if not query:
-        await message.reply('Пожалуйста, напишите запрос для поиска гайда.')
+        await message.reply('Пожалуйста, напишите запрос для поиска гайда ⌨️.')
         return
     try:
         with open('guides.json', 'r', encoding='utf-8') as f:
             guides_data = json.load(f)
     except Exception:
-        await message.reply('Ошибка загрузки гайдов.')
+        await message.reply('Ошибка загрузки гайдов 🚨.')
         return
 
     # guides.json is structured as categories -> {title: url}
@@ -1569,7 +1592,7 @@ async def handle_aiguide(message: types.Message):
                 entries.append({'title': title, 'category': cat, 'url': url})
 
     if not entries:
-        await message.reply('❌ База гайдов пуста')
+        await message.reply('❌ База гайдов пуста 📭')
         return
 
     # Optionally use ML semantic embeddings if environment variable ML_MODE=1 and sentence-transformers is installed
@@ -1597,10 +1620,10 @@ async def handle_aiguide(message: types.Message):
         best, score = quick[0]
         if score >= 75:
             # send plain text to avoid Markdown parsing issues from user-provided titles/urls
-            await message.reply(f"✅ Найден гайд: {best.get('title')}\nКатегория: {best.get('category')}\n{best.get('url')}")
+            await message.reply(f"✅ Найден гайд 🎯: {best.get('title')}\nКатегория: {best.get('category')}\n{best.get('url')}")
             return
         # otherwise suggest
-        text = "🤔 Похоже, ничего точного не найдено. Вот похожие варианты:\n\n"
+        text = "🤔 Похоже, ничего точного не найдено. Вот похожие варианты 🔍:\n\n"
         kb = InlineKeyboardMarkup(inline_keyboard=[])
         for doc, sc in quick[:10]:
             text += f"{doc.get('title')} — {doc.get('category')} (score {round(sc,2)})\n"
@@ -1655,13 +1678,13 @@ async def handle_aiguide(message: types.Message):
     # thresholds are scaled 0..1; require at least 0.4 to auto-return
     if best_score >= 0.4:
         e = best_entry
-        await message.reply(f"✅ Найден гайд: *{e.get('title')}*\nКатегория: {e.get('category')}\n{e.get('url')}", parse_mode='Markdown')
+        await message.reply(f"✅ Найден гайд 🎯: *{e.get('title')}*\nКатегория: {e.get('category')}\n{e.get('url')}", parse_mode='Markdown')
         return
 
     # otherwise suggest top 5 with scores
     suggestions = [(s[0], s[1]) for s in scored if s[1] >= 0.15][:10]
     if suggestions:
-        text = "🤔 Похоже, ничего точного не найдено. Вот похожие варианты:\n\n"
+        text = "🤔 Похоже, ничего точного не найдено. Вот похожие варианты 🔍:\n\n"
         kb = InlineKeyboardMarkup(inline_keyboard=[])
         for e, sc in suggestions:
             text += f"*{e.get('title')}* — {e.get('category')} (score {round(sc,3)})\n"
@@ -1670,7 +1693,7 @@ async def handle_aiguide(message: types.Message):
         await message.reply(text, parse_mode='Markdown', reply_markup=kb if kb.inline_keyboard else None)
         return
 
-    await message.reply('❌ Не нашёл подходящих гайдов. Попробуйте уточнить запрос.')
+    await message.reply('❌ Не нашёл подходящих гайдов ⚠️. Попробуйте уточнить запрос ✏️.')
 
 
 @dp.message(Command("status"))
@@ -1684,8 +1707,23 @@ async def bot_status(message: types.Message):
         webhook_info = await bot.get_webhook_info()
     except Exception:
         webhook_info = None
-    text = f"Bot id: {bot.id}\nCategories: {len(GUIDES)}\nTotal guides: {sum(len(g) for g in GUIDES.values())}\nML_MODE: {os.environ.get('ML_MODE', '0')}\nWebhook: {webhook_info}"
-    await message.reply(text)
+    total_guides = sum(len(g) for g in GUIDES.values())
+    yt_cats = [k for k in GUIDES if k.startswith('YouTube -')]
+    text = (
+        f"⚙️ *Статус бота Ryazhenka*\n"
+        f"{'─' * 30}\n"
+        f"🤖 Bot ID: `{bot.id}`\n"
+        f"📂 Категорий: {len(GUIDES)}\n"
+        f"📊 Всего гайдов: {total_guides}\n"
+        f"📺 YouTube категорий: {len(yt_cats)}\n"
+        f"🔄 Sync interval: {SYNC_INTERVAL_SECONDS}s\n"
+        f"🧠 ML_MODE: {os.environ.get('ML_MODE', '0')}\n"
+        f"✂️ YT Pruning: {YT_PRUNE_REMOVED}\n"
+        f"📏 YT Keep limit: {YT_KEEP_LIMIT}\n"
+        f"📡 YT каналов: {len(YT_CHANNELS)}\n"
+        f"🔗 Webhook: {webhook_info.url if webhook_info else 'N/A'}\n"
+    )
+    await message.reply(text, parse_mode='Markdown')
 
 
 @dp.message(Command("sync"))
@@ -1694,10 +1732,10 @@ async def manual_sync(message: types.Message):
     if ADMIN_IDS and user_id not in ADMIN_IDS:
         await message.reply("❌ У вас нет прав на выполнение этой операции.")
         return
-    await message.reply("🔄 Запускаю синхронизацию источников...")
+    await message.reply("🔄 Запускаю синхронизацию источников ⚙️...")
     try:
         summary = await sync_sources()
-        await message.reply(f"✅ Синхронизация завершена. YouTube добавлено: {summary.get('youtube_added',0)}, GitHub добавлено: {summary.get('github_added',0)}")
+        await message.reply(f"✅ Синхронизация завершена 🚀. YouTube добавлено: {summary.get('youtube_added',0)}, GitHub добавлено: {summary.get('github_added',0)}")
     except Exception as e:
         logging.exception(f"Manual sync failed: {e}")
         await message.reply(f"❌ Ошибка при синхронизации: {e}")
@@ -1711,14 +1749,14 @@ async def yt_add(message: types.Message, command: CommandObject):
         return
     arg = command.args.strip() if command.args else ''
     if not arg:
-        await message.reply("Использование: /yt_add <channel_url_or_handle_or_UC_id>")
+        await message.reply("Использование 🛠️: /yt_add <channel_url_or_handle_or_UC_id>")
         return
     if arg in YT_CHANNELS:
-        await message.reply("Канал уже в списке.")
+        await message.reply("Канал уже в списке 📋.")
         return
     YT_CHANNELS.append(arg)
     _save_yt_channels(YT_CHANNELS)
-    await message.reply(f"Добавил канал: {arg}")
+    await message.reply(f"Добавил канал 📺: {arg}")
 
 
 @dp.message(Command("yt_remove"))
@@ -1729,14 +1767,14 @@ async def yt_remove(message: types.Message, command: CommandObject):
         return
     arg = command.args.strip() if command.args else ''
     if not arg:
-        await message.reply("Использование: /yt_remove <channel_url_or_handle_or_UC_id>")
+        await message.reply("Использование 🛠️: /yt_remove <channel_url_or_handle_or_UC_id>")
         return
     try:
         YT_CHANNELS.remove(arg)
         _save_yt_channels(YT_CHANNELS)
-        await message.reply(f"Удалил канал: {arg}")
+        await message.reply(f"Удалил канал 🗑️: {arg}")
     except ValueError:
-        await message.reply("Канал не найден в списке.")
+        await message.reply("Канал не найден в списке ⚠️.")
 
 
 @dp.message(Command("yt_list"))
@@ -1746,9 +1784,9 @@ async def yt_list(message: types.Message):
         await message.reply("❌ У вас нет прав на выполнение этой операции.")
         return
     if not YT_CHANNELS:
-        await message.reply("Список YT каналов пуст")
+        await message.reply("Список YT каналов пуст 📭")
         return
-    text = "YouTube каналы в мониторинге:\n"
+    text = "YouTube каналы в мониторинге 📡:\n"
     for ch in YT_CHANNELS:
         text += f"• {ch}\n"
     await message.reply(text)
@@ -1768,7 +1806,7 @@ async def yt_cache_cmd(message: types.Message):
             text += f"{k} -> {v.get('channel_id','?')} ({v.get('title','')})\n"
         await message.reply(text)
     except Exception as e:
-        await message.reply(f"Ошибка при чтении cache: {e}")
+        await message.reply(f"Ошибка при чтении cache 🚨: {e}")
 
 
 @dp.message(Command("yt_prune_on"))
@@ -1779,7 +1817,7 @@ async def yt_prune_on(message: types.Message):
         return
     global YT_PRUNE_REMOVED
     YT_PRUNE_REMOVED = True
-    await message.reply("✅ Прuning включён: удалённые видео будут удаляться при sync.")
+    await message.reply("✅ Pruning включён ✂️: удалённые видео будут удаляться при sync.")
 
 
 @dp.message(Command("yt_prune_off"))
@@ -1790,7 +1828,7 @@ async def yt_prune_off(message: types.Message):
         return
     global YT_PRUNE_REMOVED
     YT_PRUNE_REMOVED = False
-    await message.reply("✅ Pruning выключен: удалённые видео НЕ будут удаляться при sync.")
+    await message.reply("✅ Pruning выключен 🛑: удалённые видео НЕ будут удаляться при sync.")
 
 
 @dp.message(Command("yt_set_limit"))
@@ -1801,11 +1839,11 @@ async def yt_set_limit(message: types.Message, command: CommandObject):
         return
     arg = command.args.strip() if command.args else ''
     if not arg or not arg.isdigit():
-        await message.reply("Использование: /yt_set_limit <число> — сколько видео хранить на канал")
+        await message.reply("Использование 🛠️: /yt_set_limit <число> — сколько видео хранить на канал")
         return
     global YT_KEEP_LIMIT
     YT_KEEP_LIMIT = int(arg)
-    await message.reply(f"✅ Новый лимит хранения видео установлен: {YT_KEEP_LIMIT}")
+    await message.reply(f"✅ Новый лимит хранения видео установлен 📏: {YT_KEEP_LIMIT}")
 
 
 @dp.message(Command("restart_polling"))
@@ -1814,13 +1852,13 @@ async def restart_polling_cmd(message: types.Message):
     if ADMIN_IDS and user_id not in ADMIN_IDS:
         await message.reply("❌ У вас нет прав на выполнение этой операции.")
         return
-    await message.reply("🔁 Перезапускаю polling: удаляю webhook и пытаюсь перезапустить")
+    await message.reply("🔁 Перезапускаю polling 🔄: удаляю webhook и пытаюсь перезапустить")
     try:
         await bot.delete_webhook(drop_pending_updates=True)
     except Exception as e:
         logging.exception(f"Failed deleting webhook: {e}")
     # instruct admins to restart the process if desired
-    await message.reply("✅ Удалил webhook. Пожалуйста, перезапустите процесс бота на хосте, если polling не восстановится автоматически.")
+    await message.reply("✅ Удалил webhook 🧹. Пожалуйста, перезапустите процесс бота на хосте, если polling не восстановится автоматически.")
 
 async def main():
     logging.basicConfig(level=logging.INFO)
@@ -1891,17 +1929,19 @@ async def main():
         logging.info(f"Webhook info at startup: {info}")
     except Exception as e:
         logging.warning(f"Could not fetch webhook info at startup: {e}")
-        # also start resolver loop
-        async def background_resolver():
-            await asyncio.sleep(10)
-            while True:
-                try:
-                    await resolve_auto_guides_links()
-                except Exception as e:
-                    logging.exception(f"Background resolver failed: {e}")
-                await asyncio.sleep(max(600, SYNC_INTERVAL_SECONDS))
 
-        asyncio.create_task(background_resolver())
+    # Start background resolver loop (always, not just on webhook error)
+    async def background_resolver():
+        await asyncio.sleep(10)
+        while True:
+            try:
+                await resolve_auto_guides_links()
+            except Exception as e:
+                logging.exception(f"Background resolver failed: {e}")
+            await asyncio.sleep(max(600, SYNC_INTERVAL_SECONDS))
+
+    asyncio.create_task(background_resolver())
+    logging.info("Background resolver task started")
 
     # Remove any webhook (avoids TelegramConflictError when switching from webhook to long polling)
     try:
