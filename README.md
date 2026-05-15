@@ -1,76 +1,76 @@
-# Ryazhenka Bot: Intelligent Guide Management Platform for Nintendo Switch Community
+# Ryazhenka Bot: Интеллектуальная платформа управления гайдами для сообщества Nintendo Switch
 
-Ryazhenka Bot is a comprehensive Telegram bot and web dashboard platform designed to streamline guide management, user engagement, and community knowledge sharing for the Nintendo Switch modding community. The system combines intelligent search capabilities, automated content synchronization, and advanced analytics to provide a structured, professional solution for managing guides across multiple sources.
+Ryazhenka Bot — это комплексная платформа, состоящая из Telegram-бота и веб-панели управления, разработанная для оптимизации управления гайдами, повышения пользовательского взаимодействия и обмена знаниями в сообществе модификации Nintendo Switch. Система объединяет интеллектуальные возможности поиска, автоматическую синхронизацию контента и продвинутую аналитику, предоставляя структурированное и профессиональное решение для управления гайдами из различных источников.
 
-## Core Features
+## Основные возможности
 
-### Guide Management System
+### Система управления гайдами
 
-The platform provides a centralized interface for managing guides across multiple categories. Administrators can create, edit, and organize guides with support for bilingual content (English and Russian). Each guide includes metadata such as creation date, update timestamp, rating statistics, and view counts. The system supports multiple source types including YouTube videos, GitHub releases, and manually added guides.
+Платформа предоставляет централизованный интерфейс для управления гайдами по различным категориям. Администраторы могут создавать, редактировать и организовывать гайды с поддержкой двуязычного контента (английский и русский). Каждый гайд включает метаданные, такие как дата создания, время обновления, статистику рейтинга и количество просмотров. Система поддерживает несколько типов источников, включая видео YouTube, релизы GitHub и вручную добавленные гайды.
 
-### Multi-Language Support
+### Поддержка многоязычности
 
-The dashboard interface supports both English and Russian languages with a language toggle accessible within the interface. All user-facing text, navigation menus, and documentation are available in both languages. Users can set their preferred language, which persists across sessions.
+Интерфейс панели управления поддерживает английский и русский языки с переключателем языка, доступным в интерфейсе. Весь пользовательский текст, меню навигации и документация доступны на обоих языках. Пользователи могут установить предпочитаемый язык, который сохраняется между сеансами.
 
-### YouTube Channel Monitoring
+### Мониторинг YouTube каналов
 
-The system automatically monitors configured YouTube channels for new videos. Administrators can add or remove channels through the dashboard. The platform tracks synchronization status, video counts, and last sync timestamps. New videos are automatically logged and can trigger Discord notifications.
+Система автоматически отслеживает настроенные YouTube-каналы на предмет новых видео. Администраторы могут добавлять или удалять каналы через панель управления. Платформа отслеживает статус синхронизации, количество видео и время последней синхронизации. Новые видео автоматически регистрируются и могут вызывать уведомления Discord.
 
-### Guide Rating System
+### Система рейтинга гайдов
 
-Users can upvote or downvote guides to indicate usefulness. The system calculates aggregate ratings and sorts search results by rating. Rating statistics are displayed alongside each guide, providing social proof and helping users identify the most valuable content.
+Пользователи могут голосовать «за» или «против» гайдов, чтобы указать полезность. Система рассчитывает совокупные рейтинги и сортирует результаты поиска по рейтингу. Статистика рейтинга отображается рядом с каждым гайдом, обеспечивая социальное доказательство и помогая пользователям определить наиболее ценный контент.
 
-### Advanced Analytics
+### Продвинутая аналитика
 
-The analytics dashboard provides comprehensive insights into user behavior and content performance. Metrics include search query history, popular guides by view count and rating, and user activity over time. Date range filtering allows administrators to analyze trends across specific periods. Analytics data can be exported for further analysis.
+Панель аналитики предоставляет полное представление о поведении пользователей и производительности контента. Метрики включают историю поисковых запросов, популярные гайды по количеству просмотров и рейтингам, а также активность пользователей во времени. Фильтрация по диапазону дат позволяет администраторам анализировать тенденции в определенные периоды. Данные аналитики можно экспортировать для дальнейшего анализа.
 
-### LLM-Powered Recommendations
+### Рекомендации на основе LLM
 
-The platform uses language models to generate personalized guide recommendations for each user based on their search history and rating patterns. Recommendations are cached for seven days to optimize performance. The system also automatically tags new guides with relevant categories using LLM analysis, reducing manual categorization work.
+Платформа использует языковые модели для генерации персональных рекомендаций гайдов для каждого пользователя на основе его истории поиска и рейтингов. Рекомендации кэшируются на семь дней для оптимизации производительности. Система также автоматически помечает новые гайды соответствующими категориями с использованием анализа LLM, снижая объем работы по ручной категоризации.
 
-### Discord Integration
+### Интеграция с Discord
 
-New guides, YouTube videos, and GitHub releases trigger formatted notifications sent to a configured Discord channel. Notifications include three key fields: title, source, and direct link. The notification system maintains a log of all sent messages and handles failures gracefully with error reporting.
+Новые гайды, видео YouTube и релизы GitHub вызывают отправку форматированных уведомлений на настроенный канал Discord. Уведомления включают три ключевых поля: название, источник и прямую ссылку. Система уведомлений ведет журнал всех отправленных сообщений и корректно обрабатывает сбои с отчетом об ошибках.
 
-### REST API for Third-Party Integration
+### REST API для интеграции с третьими сторонами
 
-The platform exposes a comprehensive REST API for third-party applications. API endpoints cover guide management, category browsing, YouTube channel monitoring, and analytics retrieval. Authentication uses API keys that can be generated with configurable expiration dates. All endpoints are documented with request parameters and example usage.
+Платформа предоставляет комплексный REST API для приложений третьих сторон. Endpoints API охватывают управление гайдами, просмотр категорий, мониторинг YouTube-каналов и получение аналитики. Аутентификация использует API-ключи, которые можно создавать с настраиваемыми сроками действия. Все endpoints документированы с параметрами запроса и примерами использования.
 
-### Bot Settings Panel
+### Панель настроек бота
 
-Administrators can configure critical bot parameters through the settings interface. Configuration options include sync interval (in seconds), allowed domains for content sources, administrator IDs for access control, logging level, and Discord webhook URL for notifications.
+Администраторы могут настраивать критические параметры бота через интерфейс настроек. Параметры конфигурации включают интервал синхронизации (в секундах), разрешенные домены для источников контента, ID администраторов для управления доступом, уровень логирования и URL вебхука Discord для уведомлений.
 
-## Technical Architecture
+## Техническая архитектура
 
-### Database Schema
+### Схема базы данных
 
-The system uses MySQL with Drizzle ORM for data persistence. The schema includes tables for users, guides, categories, ratings, YouTube channels, search analytics, activity logs, bot settings, Discord notifications, recommendations, and API keys. All tables include appropriate indexes and constraints for data integrity.
+Система использует MySQL с Drizzle ORM для сохранения данных. Схема включает таблицы для пользователей, гайдов, категорий, рейтингов, YouTube-каналов, аналитики поиска, журналов активности, настроек бота, уведомлений Discord, рекомендаций и API-ключей. Все таблицы включают соответствующие индексы и ограничения для целостности данных.
 
-### Backend Infrastructure
+### Инфраструктура backend
 
-The backend is built with Express.js and tRPC for type-safe API procedures. All database queries are centralized in query helpers that handle common operations. Authentication uses Manus OAuth with role-based access control (admin/user). Protected procedures enforce authorization checks before executing sensitive operations.
+Backend построен на Express.js и tRPC для типобезопасных API-процедур. Все запросы к базе данных централизованы в помощниках запросов, которые обрабатывают общие операции. Аутентификация использует Manus OAuth с контролем доступа на основе ролей (admin/user). Защищенные процедуры обеспечивают проверку авторизации перед выполнением чувствительных операций.
 
-### Frontend Design System
+### Система дизайна frontend
 
-The user interface follows the International Typographic Style with a pristine white canvas, bold red accents, and crisp black sans-serif typography. The design emphasizes clean asymmetric layouts, fine black divider lines, and generous negative space. All components use a strict grid system with precise spacing and alignment.
+Пользовательский интерфейс следует Международному типографическому стилю с чистым белым холстом, смелыми красными акцентами и четкой черной типографией без засечек. Дизайн подчеркивает чистые асимметричные макеты, тонкие черные линии разделителей и щедрое отрицательное пространство. Все компоненты используют строгую сетку с точным интервалом и выравниванием.
 
-### Internationalization
+### Интернационализация
 
-The i18n system uses a centralized translation file with support for English and Russian. Language context is provided to all React components, allowing dynamic language switching. User language preferences are persisted in the database and local storage.
+Система i18n использует централизованный файл переводов с поддержкой английского и русского языков. Контекст языка предоставляется всем React-компонентам, позволяя динамически переключать язык. Языковые предпочтения пользователя сохраняются в базе данных и локальном хранилище.
 
-## Installation and Setup
+## Установка и настройка
 
-### Prerequisites
+### Предварительные требования
 
-- Node.js 18 or higher
-- MySQL 8.0 or higher
-- Telegram Bot Token (from BotFather)
-- Manus OAuth credentials
-- Discord webhook URL (optional, for notifications)
+- Node.js 18 или выше
+- MySQL 8.0 или выше
+- Токен Telegram Bot (от BotFather)
+- Учетные данные Manus OAuth
+- URL вебхука Discord (опционально, для уведомлений)
 
-### Environment Configuration
+### Конфигурация окружения
 
-Create a `.env` file with the following variables:
+Создайте файл `.env` со следующими переменными:
 
 ```
 DATABASE_URL=mysql://user:password@localhost:3306/ryazhenka
@@ -82,7 +82,7 @@ LOG_LEVEL=INFO
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
-### Database Setup
+### Настройка базы данных
 
 ```bash
 pnpm install
@@ -90,15 +90,15 @@ pnpm drizzle-kit generate
 pnpm db:push
 ```
 
-### Development Server
+### Сервер разработки
 
 ```bash
 pnpm dev
 ```
 
-The development server runs on `http://localhost:3000` with hot module reloading enabled.
+Сервер разработки запускается на `http://localhost:3000` с включенной горячей перезагрузкой модулей.
 
-### Production Build
+### Продакшн сборка
 
 ```bash
 pnpm build
@@ -107,132 +107,132 @@ pnpm start
 
 ## API Endpoints
 
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|-----------------|
-| GET | `/api/trpc/guides.list` | List all guides with pagination | Optional |
-| POST | `/api/trpc/guides.create` | Create a new guide | Admin |
-| POST | `/api/trpc/guides.update` | Update an existing guide | Admin |
-| DELETE | `/api/trpc/guides.delete` | Delete a guide | Admin |
-| POST | `/api/trpc/guides.rate` | Rate a guide (upvote/downvote) | User |
-| GET | `/api/trpc/categories.list` | List all categories | Public |
-| POST | `/api/trpc/categories.create` | Create a new category | Admin |
-| GET | `/api/trpc/youtubeChannels.list` | List monitored YouTube channels | Admin |
-| POST | `/api/trpc/youtubeChannels.add` | Add a YouTube channel | Admin |
-| POST | `/api/trpc/youtubeChannels.remove` | Remove a YouTube channel | Admin |
-| GET | `/api/trpc/analytics.searchQueries` | Get search query analytics | Admin |
-| POST | `/api/trpc/analytics.logSearch` | Log a search query | Public |
-| GET | `/api/trpc/settings.get` | Get a bot setting | Admin |
-| POST | `/api/trpc/settings.set` | Update a bot setting | Admin |
-| GET | `/api/trpc/recommendations.get` | Get personalized recommendations | User |
-| GET | `/api/trpc/apiKeys.list` | List user API keys | User |
-| POST | `/api/trpc/apiKeys.generate` | Generate a new API key | User |
+| Метод | Endpoint | Описание | Аутентификация |
+|-------|----------|---------|-----------------|
+| GET | `/api/trpc/guides.list` | Получить список гайдов с пагинацией | Опционально |
+| POST | `/api/trpc/guides.create` | Создать новый гайд | Администратор |
+| POST | `/api/trpc/guides.update` | Обновить существующий гайд | Администратор |
+| DELETE | `/api/trpc/guides.delete` | Удалить гайд | Администратор |
+| POST | `/api/trpc/guides.rate` | Оценить гайд (голос за/против) | Пользователь |
+| GET | `/api/trpc/categories.list` | Получить список категорий | Публичный |
+| POST | `/api/trpc/categories.create` | Создать новую категорию | Администратор |
+| GET | `/api/trpc/youtubeChannels.list` | Получить список мониторимых YouTube-каналов | Администратор |
+| POST | `/api/trpc/youtubeChannels.add` | Добавить YouTube-канал | Администратор |
+| POST | `/api/trpc/youtubeChannels.remove` | Удалить YouTube-канал | Администратор |
+| GET | `/api/trpc/analytics.searchQueries` | Получить аналитику поисковых запросов | Администратор |
+| POST | `/api/trpc/analytics.logSearch` | Записать поисковый запрос | Публичный |
+| GET | `/api/trpc/settings.get` | Получить настройку бота | Администратор |
+| POST | `/api/trpc/settings.set` | Обновить настройку бота | Администратор |
+| GET | `/api/trpc/recommendations.get` | Получить персональные рекомендации | Пользователь |
+| GET | `/api/trpc/apiKeys.list` | Получить список API-ключей пользователя | Пользователь |
+| POST | `/api/trpc/apiKeys.generate` | Создать новый API-ключ | Пользователь |
 
-## Authentication
+## Аутентификация
 
-All protected endpoints require authentication. For web dashboard access, use Manus OAuth. For API access, include the API key in the Authorization header:
+Все защищенные endpoints требуют аутентификации. Для доступа к веб-панели управления используйте Manus OAuth. Для доступа к API включите API-ключ в заголовок Authorization:
 
 ```
 Authorization: Bearer YOUR_API_KEY
 ```
 
-## Deployment
+## Развертывание
 
-### Railway Deployment
+### Развертывание на Railway
 
-The application is configured for deployment on Railway with the following setup:
+Приложение настроено для развертывания на Railway со следующей конфигурацией:
 
-1. Connect your GitHub repository to Railway
-2. Set environment variables in the Railway dashboard
-3. Railway automatically builds and deploys on each push to main branch
-4. The application runs as a Node.js service with automatic restarts
+1. Подключите ваш GitHub-репозиторий к Railway
+2. Установите переменные окружения в панели управления Railway
+3. Railway автоматически выполняет сборку и развертывание при каждом push в ветку main
+4. Приложение работает как Node.js-сервис с автоматическими перезагрузками
 
-### Custom Deployment
+### Пользовательское развертывание
 
-For other deployment platforms, ensure the following:
+Для других платформ развертывания убедитесь в следующем:
 
-- Node.js 18+ runtime
-- MySQL database connection
-- Environment variables properly configured
-- Port 3000 exposed for the application
+- Среда выполнения Node.js 18+
+- Подключение к базе данных MySQL
+- Правильно настроенные переменные окружения
+- Открытый порт 3000 для приложения
 
-## Performance Optimization
+## Оптимизация производительности
 
-The system implements several performance optimizations:
+Система реализует несколько оптимизаций производительности:
 
-- Database query result caching for frequently accessed data
-- LLM recommendation caching with 7-day expiration
-- Efficient pagination for large result sets
-- Indexed database queries for fast lookups
-- Lazy loading of components in the React frontend
+- Кэширование результатов запросов к базе данных для часто используемых данных
+- Кэширование рекомендаций LLM с истечением через 7 дней
+- Эффективная пагинация для больших наборов результатов
+- Индексированные запросы к базе данных для быстрого поиска
+- Ленивая загрузка компонентов в React frontend
 
-## Security Considerations
+## Соображения безопасности
 
-- All admin operations require role-based authorization checks
-- API keys have configurable expiration dates
-- Database connections use SSL/TLS encryption
-- Input validation on all user-submitted data
-- Rate limiting on search and API endpoints
-- Secure session management with HTTP-only cookies
+- Все операции администратора требуют проверки авторизации на основе ролей
+- API-ключи имеют настраиваемые сроки действия
+- Подключения к базе данных используют шифрование SSL/TLS
+- Валидация входных данных для всех пользовательских данных
+- Ограничение частоты запросов для поиска и API endpoints
+- Безопасное управление сеансами с HTTP-only cookies
 
-## Monitoring and Logging
+## Мониторинг и логирование
 
-The system maintains comprehensive logs of all operations:
+Система ведет полный журнал всех операций:
 
-- Activity log tracks user actions (create, update, delete, rate)
-- Search query log records all searches for analytics
-- Discord notification log tracks message delivery status
-- Error logging captures exceptions with full stack traces
-- Log level configuration allows adjustment of verbosity
+- Журнал активности отслеживает действия пользователей (создание, обновление, удаление, оценка)
+- Журнал поисковых запросов записывает все поиски для аналитики
+- Журнал уведомлений Discord отслеживает статус доставки сообщений
+- Логирование ошибок захватывает исключения с полными трассировками стека
+- Конфигурация уровня логирования позволяет настраивать подробность
 
-## Troubleshooting
+## Устранение неполадок
 
-### Database Connection Issues
+### Проблемы с подключением к базе данных
 
-Verify the DATABASE_URL environment variable and ensure MySQL is running and accessible. Check firewall rules and network connectivity.
+Проверьте переменную окружения DATABASE_URL и убедитесь, что MySQL запущена и доступна. Проверьте правила брандмауэра и сетевое соединение.
 
-### Discord Notifications Not Sending
+### Уведомления Discord не отправляются
 
-Verify the DISCORD_WEBHOOK_URL is correct and the webhook endpoint is still active. Check the Discord notification log for error messages.
+Проверьте правильность DISCORD_WEBHOOK_URL и что конечная точка вебхука все еще активна. Проверьте журнал уведомлений Discord на предмет сообщений об ошибках.
 
-### LLM Features Not Working
+### Функции LLM не работают
 
-Ensure the LLM API credentials are properly configured. Check server logs for LLM API errors. Verify network connectivity to the LLM service.
+Убедитесь, что учетные данные API LLM правильно настроены. Проверьте логи сервера на предмет ошибок API LLM. Проверьте сетевое соединение с сервисом LLM.
 
-### Performance Issues
+### Проблемы производительности
 
-Check database query performance using slow query logs. Consider adding indexes for frequently filtered columns. Review memory usage and consider scaling resources.
+Проверьте производительность запросов к базе данных с помощью журналов медленных запросов. Рассмотрите возможность добавления индексов для часто фильтруемых столбцов. Проверьте использование памяти и рассмотрите масштабирование ресурсов.
 
-## Future Enhancements
+## Будущие улучшения
 
-The roadmap includes the following planned features:
+Дорожная карта включает следующие планируемые функции:
 
-- Discord bot integration for direct Discord server access
-- Advanced machine learning-based recommendation engine
-- Webhook support for external service integrations
-- Mobile application for iOS and Android
-- Real-time collaboration features for guide editing
-- Advanced search with full-text indexing
-- Guide versioning and change history
-- User reputation system and badges
+- Интеграция Discord-бота для прямого доступа к серверам Discord
+- Продвинутый механизм рекомендаций на основе машинного обучения
+- Поддержка вебхуков для интеграции с внешними сервисами
+- Мобильное приложение для iOS и Android
+- Функции совместного редактирования гайдов в реальном времени
+- Продвинутый поиск с полнотекстовым индексированием
+- Версионирование гайдов и история изменений
+- Система репутации пользователей и значки
 
-## Contributing
+## Участие в разработке
 
-Contributions are welcome. Please follow these guidelines:
+Приветствуются вклады. Пожалуйста, следуйте этим рекомендациям:
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes with clear commit messages
-4. Submit a pull request with description of changes
-5. Ensure all tests pass and code follows the style guide
+1. Создайте форк репозитория
+2. Создайте ветку функции
+3. Внесите свои изменения с четкими сообщениями коммитов
+4. Отправьте pull request с описанием изменений
+5. Убедитесь, что все тесты проходят и код соответствует руководству по стилю
 
-## License
+## Лицензия
 
-This project is distributed under the MIT License. See the LICENSE file for complete terms.
+Этот проект распространяется под лицензией MIT. Полные условия см. в файле LICENSE.
 
-## Support and Contact
+## Поддержка и контакты
 
-For bug reports, feature requests, or general questions, please use the GitHub Issues page. For urgent matters, contact the project maintainers directly through the GitHub repository.
+Для сообщений об ошибках, запросов функций или общих вопросов используйте страницу GitHub Issues. Для срочных вопросов свяжитесь с разработчиками проекта напрямую через репозиторий GitHub.
 
-## Acknowledgments
+## Благодарности
 
-This project builds upon the excellent work of the Nintendo Switch Homebrew community. Special thanks to the Atmosphere project and NH Switch Guide for inspiration and reference materials.
+Этот проект построен на основе отличной работы сообщества Nintendo Switch Homebrew. Особая благодарность проекту Atmosphere и NH Switch Guide за вдохновение и справочные материалы.
