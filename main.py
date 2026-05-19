@@ -1173,7 +1173,6 @@ SYNONYMS = {
     'batteryfixes': 'battery',
     'battery drain': 'battery',
     'batt drain': 'battery',
-    'battery drain': 'battery',
     'batteryproblem': 'battery',
     'battery problem': 'battery',
 
@@ -1583,13 +1582,20 @@ async def handle_aiguide(message: types.Message):
     for cat, items in guides_data.items():
         if isinstance(items, dict):
             for title, url in items.items():
-                entries.append({'title': title, 'category': cat, 'url': url})
+                if title and url:
+                    entries.append({'title': title, 'category': cat, 'url': url})
         elif isinstance(items, list):
             for it in items:
                 # support list of objects
-                title = it.get('title') if isinstance(it, dict) else str(it)
-                url = it.get('url') if isinstance(it, dict) else ''
-                entries.append({'title': title, 'category': cat, 'url': url})
+                if isinstance(it, dict):
+                    title = it.get('title')
+                    url = it.get('url')
+                    if title and url:
+                        entries.append({'title': title, 'category': cat, 'url': url})
+                else:
+                    title = str(it)
+                    if title:
+                        entries.append({'title': title, 'category': cat, 'url': ''})
 
     if not entries:
         await message.reply('❌ База гайдов пуста 📭')
