@@ -1072,6 +1072,87 @@ async def recommend_repos(message: types.Message):
     await safe_send(message, text, disable_web_page_preview=True)
 
 
+@dp.message(Command("random"))
+async def random_guide(message: types.Message, command: CommandObject):
+    """Return a random guide, optionally filtered by category keyword."""
+    import random as _random
+
+    query = (command.args or "").strip().lower()
+
+    if query:
+        matching = {
+            cat: guides
+            for cat, guides in GUIDES.items()
+            if query in cat.lower()
+        }
+    else:
+        matching = GUIDES
+
+    all_entries = [
+        (title, url, cat)
+        for cat, guides in matching.items()
+        for title, url in guides.items()
+        if url
+    ]
+
+    if not all_entries:
+        await message.reply(
+            "❌ Гайды не найдены."
+            + (f" Попробуй /random без аргументов или /all для списка категорий." if query else "")
+        )
+        return
+
+    title, url, cat = _random.choice(all_entries)
+    await message.reply(
+        f"🎲 *Случайный гайд*\n\n"
+        f"📂 Категория: {cat}\n"
+        f"📖 [{title}]({url})",
+        parse_mode='Markdown',
+        disable_web_page_preview=True,
+    )
+
+
+@dp.message(Command("stats"))
+async def guide_stats(message: types.Message):
+    """Public statistics about the guides database."""
+    if not GUIDES:
+        await message.reply("❌ База гайдов пуста 📭")
+        return
+
+    total = sum(len(g) for g in GUIDES.values())
+    sorted_cats = sorted(GUIDES.items(), key=lambda x: len(x[1]), reverse=True)
+
+    text = f"📊 *Статистика базы гайдов*\n{'─' * 30}\n"
+    text += f"📚 Всего гайдов: *{total}*\n"
+    text += f"📂 Категорий: *{len(GUIDES)}*\n\n"
+    text += "*Топ категорий:*\n"
+    for cat, guides in sorted_cats[:8]:
+        bar = "█" * min(len(guides) // max(1, total // 20), 10)
+        text += f"  {cat} — {len(guides)} {bar}\n"
+    if len(sorted_cats) > 8:
+        text += f"  _...и ещё {len(sorted_cats) - 8} категорий_\n"
+
+    await message.reply(text, parse_mode='Markdown')
+
+
+@dp.message(Command("top"))
+async def top_categories(message: types.Message):
+    """Top 10 categories by guide count with inline buttons."""
+    if not GUIDES:
+        await message.reply("❌ База гайдов пуста 📭")
+        return
+
+    sorted_cats = sorted(GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:10]
+    total = sum(len(g) for g in GUIDES.values())
+
+    text = f"🏆 *Топ категорий по количеству гайдов*\n{'─' * 35}\n"
+    for i, (cat, guides) in enumerate(sorted_cats, 1):
+        pct = len(guides) * 100 // max(total, 1)
+        text += f"{i}. {cat} — {len(guides)} гайдов ({pct}%)\n"
+
+    await message.reply(text, parse_mode='Markdown', reply_markup=create_categories_keyboard())
+
+
 @dp.message(Command("admin_help"))
 async def admin_help(message: types.Message):
     user_id = message.from_user.id
@@ -1111,6 +1192,9 @@ async def help_command(message: types.Message):
         "📋 /all — Показать все категории\n"
         "🔍 /guide `<тема>` — Найти гайд (fuzzy search)\n"
         "🧠 /aiguide `<текст>` — Умный поиск (BM25 + fuzzy)\n"
+        "🎲 /random `[категория]` — Случайный гайд\n"
+        "📊 /stats — Статистика базы гайдов\n"
+        "🏆 /top — Топ категорий по количеству гайдов\n"
         "📦 /recommend — Репозитории автора\n\n"
         "🔐 *Админ-команды:*\n"
         "🔄 /sync — Синхронизация YouTube/GitHub\n"
