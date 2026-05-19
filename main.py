@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import json
 import os
@@ -5,6 +6,7 @@ import asyncio
 import aiohttp
 import xml.etree.ElementTree as ET
 import re
+import time
 import urllib.parse
 import math
 from aiogram import Bot, Dispatcher, types, F
@@ -245,7 +247,7 @@ except Exception:
 
 # persistent small settings file (to keep runtime toggles between restarts)
 SETTINGS_PATH = "bot_settings.json"
-DEFAULT_SETTINGS = {"auto_resolve_and_add": True}
+DEFAULT_SETTINGS = {"auto_resolve_and_add": True, "yt_prune_removed": True, "yt_keep_limit": 50}
 def load_settings():
     try:
         if os.path.exists(SETTINGS_PATH):
@@ -263,6 +265,9 @@ def save_settings(settings: dict):
         logging.error(f"Failed saving settings: {e}")
 
 SETTINGS = load_settings()
+# Allow persisted settings to override env-sourced defaults
+YT_PRUNE_REMOVED = SETTINGS.get('yt_prune_removed', YT_PRUNE_REMOVED)
+YT_KEEP_LIMIT = SETTINGS.get('yt_keep_limit', YT_KEEP_LIMIT)
 
 
 def normalize(text: str) -> str:
@@ -775,17 +780,22 @@ async def sync_sources():
     save_guides()
     return summary
 
+def _cat_cb(category: str) -> str:
+    """Stable 12-char hash for a category name to use as callback_data key."""
+    return hashlib.md5(category.encode('utf-8')).hexdigest()[:12]
+
+
 def create_categories_keyboard():
     kb = InlineKeyboardMarkup(inline_keyboard=[])
     categories = list(GUIDES.keys())
-    
+
     for i in range(0, len(categories), 2):
         row = []
-        row.append(InlineKeyboardButton(text=categories[i], callback_data=f"cat_{i}"))
+        row.append(InlineKeyboardButton(text=categories[i], callback_data=f"cat|{_cat_cb(categories[i])}"))
         if i + 1 < len(categories):
-            row.append(InlineKeyboardButton(text=categories[i+1], callback_data=f"cat_{i+1}"))
+            row.append(InlineKeyboardButton(text=categories[i+1], callback_data=f"cat|{_cat_cb(categories[i+1])}"))
         kb.inline_keyboard.append(row)
-    
+
     return kb
 
 @dp.message(Command("start"))
@@ -824,29 +834,26 @@ async def show_all(message: types.Message):
     
     await safe_send(message, text, reply_markup=create_categories_keyboard())
 
-@dp.callback_query(F.data.startswith("cat_"))
+@dp.callback_query(F.data.startswith("cat|"))
 async def handle_category(callback_query: types.CallbackQuery):
-    category_index = int(callback_query.data.split("_")[1])
-    categories = list(GUIDES.keys())
-    
-    if category_index >= len(categories):
+    cat_hash = callback_query.data.split("|", 1)[1]
+    # find category by stable hash so button works even if order changes
+    category = next((c for c in GUIDES if _cat_cb(c) == cat_hash), None)
+    if category is None:
         await callback_query.answer("❌ Категория не найдена")
         return
-    
-    category = categories[category_index]
-    guides = GUIDES[category]
-    
-    text = f"📚 *{category}*\n\n"
 
+    guides = GUIDES[category]
+
+    text = f"📚 *{category}*\n\n"
     for key, url in guides.items():
         text += f"🔹 [{key}]({url})\n"
-
     text += f"\n📝 Всего 📊: {len(guides)} гайдов\n\n"
-    # navigation
+
     kb_nav = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⬅ Назад 🔙", callback_data="back_to_categories")]
     ])
-    
+
     try:
         await callback_query.message.edit_text(text, disable_web_page_preview=True, reply_markup=kb_nav)
     except Exception:
@@ -996,10 +1003,10 @@ async def send_guide(message: types.Message, command: CommandObject):
         kb = InlineKeyboardMarkup(inline_keyboard=[])
         for t, cat, url, score in suggestions[:10]:
             text += f"*{t}* — {cat} (score {score})\n"
-            # store conversational context so callback can open the url
-            kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {t}", callback_data=f"open|{t}")])
-            DIALOG_CTX[t] = {'title': t, 'category': cat, 'url': url}
-            DIALOG_CTX_TIME[t] = time.time()
+            key = hashlib.md5(t.encode('utf-8')).hexdigest()[:16]
+            kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {t[:40]}", callback_data=f"open|{key}")])
+            DIALOG_CTX[key] = {'title': t, 'category': cat, 'url': url}
+            DIALOG_CTX_TIME[key] = time.time()
             _cleanup_dialog_ctx()
         await message.reply(text, parse_mode="Markdown", reply_markup=kb)
         return
@@ -1361,19 +1368,17 @@ def _escape_markdown_v2(text: str) -> str:
 
 
 async def safe_send(target, text: str, reply_markup=None, disable_web_page_preview=False):
-    """Try to send MarkdownV2 escaped text, fallback to plain text if Telegram rejects entities."""
+    """Send with Markdown parse mode, falling back to plain text on entity errors."""
     try:
-        # first try MarkdownV2 with escaping
-        esc = _escape_markdown_v2(text)
-        await target.reply(esc, parse_mode='MarkdownV2', reply_markup=reply_markup, disable_web_page_preview=disable_web_page_preview)
+        await target.reply(text, parse_mode='Markdown', reply_markup=reply_markup,
+                           disable_web_page_preview=disable_web_page_preview)
         return
-    except Exception as e:
-        # fallback: plain text
+    except Exception:
         try:
-            await target.reply(text, reply_markup=reply_markup, disable_web_page_preview=disable_web_page_preview)
+            await target.reply(text, reply_markup=reply_markup,
+                               disable_web_page_preview=disable_web_page_preview)
             return
         except Exception:
-            # last resort: send without reply
             try:
                 await target.answer(text)
             except Exception:
@@ -1549,7 +1554,6 @@ def _search_guides(query: str, top_n: int = 10):
 
 # conversational suggestion storage per chat_id
 DIALOG_CTX = {}
-import time
 DIALOG_CTX_TIME = {}
 
 def _cleanup_dialog_ctx():
@@ -1569,15 +1573,9 @@ async def handle_aiguide(message: types.Message):
     if not query:
         await message.reply('Пожалуйста, напишите запрос для поиска гайда ⌨️.')
         return
-    try:
-        with open('guides.json', 'r', encoding='utf-8') as f:
-            guides_data = json.load(f)
-    except Exception:
-        await message.reply('Ошибка загрузки гайдов 🚨.')
-        return
+    guides_data = GUIDES
 
-    # guides.json is structured as categories -> {title: url}
-    # build a flat list of entries with title and optional url/content
+    # build a flat list of entries from in-memory guides dict
     entries = []
     for cat, items in guides_data.items():
         if isinstance(items, dict):
@@ -1634,7 +1632,7 @@ async def handle_aiguide(message: types.Message):
         for doc, sc in quick[:10]:
             text += f"{doc.get('title')} — {doc.get('category')} (score {round(sc,2)})\n"
             if doc.get('url'):
-                kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {doc.get('title')}", url=doc.get('url'))])
+                kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {doc.get('title', '')[:40]}", url=doc.get('url'))])
         # send plain text to avoid entity parsing errors
         await message.reply(text, reply_markup=kb if kb.inline_keyboard else None)
         return
@@ -1695,7 +1693,7 @@ async def handle_aiguide(message: types.Message):
         for e, sc in suggestions:
             text += f"*{e.get('title')}* — {e.get('category')} (score {round(sc,3)})\n"
             if e.get('url'):
-                kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {e.get('title')}", url=e.get('url'))])
+                kb.inline_keyboard.append([InlineKeyboardButton(text=f"Открыть: {e.get('title', '')[:40]}", url=e.get('url'))])
         await message.reply(text, parse_mode='Markdown', reply_markup=kb if kb.inline_keyboard else None)
         return
 
@@ -1741,6 +1739,8 @@ async def manual_sync(message: types.Message):
     await message.reply("🔄 Запускаю синхронизацию источников ⚙️...")
     try:
         summary = await sync_sources()
+        global BM25_INDEX
+        BM25_INDEX = None  # invalidate so next search rebuilds with fresh guides
         await message.reply(f"✅ Синхронизация завершена 🚀. YouTube добавлено: {summary.get('youtube_added',0)}, GitHub добавлено: {summary.get('github_added',0)}")
     except Exception as e:
         logging.exception(f"Manual sync failed: {e}")
@@ -1823,6 +1823,8 @@ async def yt_prune_on(message: types.Message):
         return
     global YT_PRUNE_REMOVED
     YT_PRUNE_REMOVED = True
+    SETTINGS['yt_prune_removed'] = True
+    save_settings(SETTINGS)
     await message.reply("✅ Pruning включён ✂️: удалённые видео будут удаляться при sync.")
 
 
@@ -1834,6 +1836,8 @@ async def yt_prune_off(message: types.Message):
         return
     global YT_PRUNE_REMOVED
     YT_PRUNE_REMOVED = False
+    SETTINGS['yt_prune_removed'] = False
+    save_settings(SETTINGS)
     await message.reply("✅ Pruning выключен 🛑: удалённые видео НЕ будут удаляться при sync.")
 
 
@@ -1841,7 +1845,7 @@ async def yt_prune_off(message: types.Message):
 async def yt_set_limit(message: types.Message, command: CommandObject):
     user_id = message.from_user.id
     if ADMIN_IDS and user_id not in ADMIN_IDS:
-        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        await message.reply("❌ У вас нет прав на выполнение этой команды.")
         return
     arg = command.args.strip() if command.args else ''
     if not arg or not arg.isdigit():
@@ -1849,6 +1853,8 @@ async def yt_set_limit(message: types.Message, command: CommandObject):
         return
     global YT_KEEP_LIMIT
     YT_KEEP_LIMIT = int(arg)
+    SETTINGS['yt_keep_limit'] = YT_KEEP_LIMIT
+    save_settings(SETTINGS)
     await message.reply(f"✅ Новый лимит хранения видео установлен 📏: {YT_KEEP_LIMIT}")
 
 
@@ -1917,6 +1923,8 @@ async def main():
         while True:
             try:
                 summary = await sync_sources()
+                global BM25_INDEX
+                BM25_INDEX = None  # force rebuild on next search
                 logging.info(f"Background sync completed: {summary}")
             except Exception as e:
                 logging.exception(f"Background sync failed: {e}")
