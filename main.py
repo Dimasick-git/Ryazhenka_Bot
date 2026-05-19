@@ -370,7 +370,7 @@ async def resolve_auto_guides_links(notify_admins: bool = True):
         save_guides()
         logging.info(f"Resolved {len(changed)} auto-guides to direct links")
         if notify_admins and ADMIN_IDS:
-            msg = "🔎 Найдены прямые ссылки для авто-дайдов:\n"
+            msg = "🔎 Найдены прямые ссылки для авто-гайдов:\n"
             for t, u in changed[:10]:
                 msg += f"• {t}: {u}\n"
             # send to admins
@@ -954,12 +954,12 @@ async def send_guide(message: types.Message, command: CommandObject):
                     score = max(score, lev_score)
                 except Exception:
                     pass
-        # if BM25 available, combine its score
+        # if BM25 available, combine its score (normalised to 0-100 to match fuzzy scores)
         if bm25_scores is not None:
             try:
                 bm = bm25_scores[idx_t]
-                # normalize bm to 0..1 by a simple scale (not perfect but helps)
-                score = max(score, min(1.0, bm / (bm25_scores[0] + 1e-9)))
+                bm_norm = min(100.0, bm / (bm25_scores[0] + 1e-9) * 100.0)
+                score = max(score, bm_norm)
             except Exception:
                 pass
         results.append((t, score))
