@@ -28,7 +28,11 @@ logs/
 
 # Local data (runtime files, not committed)
 yt_channels.json
+guides.json.bak
 guides.json.bak.*
+bot_settings.json
+yt_channel_cache.json
+generated_synonyms.json
 
 # OS
 .DS_Store
