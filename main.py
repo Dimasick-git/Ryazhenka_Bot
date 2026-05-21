@@ -9,8 +9,12 @@ import re
 import time
 import urllib.parse
 import math
+import uuid
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import (
+    InlineKeyboardMarkup, InlineKeyboardButton,
+    InlineQuery, InlineQueryResultArticle, InputTextMessageContent,
+)
 from aiogram.filters import Command, CommandObject
 def _load_dotenv(path='.env'):
     """Simple .env loader: set variables from a .env file if they are not already in os.environ."""
@@ -1162,6 +1166,11 @@ async def admin_help(message: types.Message):
     text = (
         "🛡️ *Админские команды* 🔐\n"
         f"{'─' * 35}\n"
+        "📝 *Управление гайдами:*\n"
+        "➕ /add\_guide `Кат | Назв | URL` — Добавить гайд\n"
+        "➖ /remove\_guide `Кат | Назв` — Удалить гайд\n"
+        "✏️ /edit\_guide `Кат | Назв | URL` — Изменить URL\n"
+        "📋 /list\_guides `[Категория]` — Список гайдов\n\n"
         "📊 *Данные и синхронизация:*\n"
         "🔄 /sync — Синхронизация YouTube/GitHub\n"
         "🗑️ /purge\_autoguides — Автогайды в архив\n"
@@ -1177,7 +1186,8 @@ async def admin_help(message: types.Message):
         "⚙️ *Система:*\n"
         "📊 /status — Статус бота\n"
         "🔁 /restart\_polling — Сброс webhook\n"
-        "📦 /recommend — Репозитории Dimasick-git\n"
+        "📦 /recommend — Репозитории Dimasick-git\n\n"
+        "💡 *Inline-режим:* `@botname запрос` — поиск в любом чате\n"
     )
     await message.reply(text, parse_mode='Markdown')
 
@@ -1196,14 +1206,15 @@ async def help_command(message: types.Message):
         "📊 /stats — Статистика базы гайдов\n"
         "🏆 /top — Топ категорий по количеству гайдов\n"
         "📦 /recommend — Репозитории автора\n\n"
+        "🔍 *Inline-режим:*\n"
+        "Напиши `@botname запрос` в любом чате, чтобы найти гайд без открытия бота!\n\n"
         "🔐 *Админ-команды:*\n"
         "🔄 /sync — Синхронизация YouTube/GitHub\n"
-        "🗑️ /purge\_autoguides — Автогайды в архив\n"
-        "🧹 /cleanup\_duplicates — Удалить дубликаты\n"
-        "⚙️ /status — Статус бота\n"
-        "🔁 /restart\_polling — Сброс webhook\n"
-        "📺 /yt\_add `/yt\_remove /yt\_list` — YouTube каналы\n"
-        "🛡️ /admin\_help — Список админ-команд\n"
+        "➕ /add\_guide — Добавить гайд\n"
+        "➖ /remove\_guide — Удалить гайд\n"
+        "✏️ /edit\_guide — Изменить URL гайда\n"
+        "📋 /list\_guides — Просмотр гайдов по категории\n"
+        "🛡️ /admin\_help — Все админ-команды\n"
     )
     await message.reply(text, parse_mode='Markdown')
 
@@ -1955,6 +1966,240 @@ async def restart_polling_cmd(message: types.Message):
         logging.exception(f"Failed deleting webhook: {e}")
     # instruct admins to restart the process if desired
     await message.reply("✅ Удалил webhook 🧹. Пожалуйста, перезапустите процесс бота на хосте, если polling не восстановится автоматически.")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ADMIN: add / remove / edit guides via commands
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dp.message(Command("add_guide"))
+async def add_guide_cmd(message: types.Message, command: CommandObject):
+    """Add a guide: /add_guide Категория | Название | URL"""
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    if not command.args:
+        await message.reply(
+            "📌 *Формат:* `/add_guide Категория | Название | URL`\n\n"
+            "*Пример:*\n`/add_guide 🎮 Игры | Minecraft Switch | https://github.com/...`",
+            parse_mode="Markdown",
+        )
+        return
+    parts = [p.strip() for p in command.args.split('|')]
+    if len(parts) < 3:
+        await message.reply(
+            "❌ Нужно три части через `|`:\n`Категория | Название | URL`",
+            parse_mode="Markdown",
+        )
+        return
+    category, title, url = parts[0], parts[1], parts[2]
+    if not url.startswith(('http://', 'https://')):
+        await message.reply("❌ URL должен начинаться с `http://` или `https://`", parse_mode="Markdown")
+        return
+    if category not in GUIDES:
+        GUIDES[category] = {}
+    if title in GUIDES[category]:
+        await message.reply(
+            f"⚠️ Гайд `{title}` уже существует в категории `{category}`.\n"
+            "Используйте `/edit_guide` для изменения или `/remove_guide` для удаления.",
+            parse_mode="Markdown",
+        )
+        return
+    GUIDES[category][title] = url
+    save_guides()
+    global BM25_INDEX
+    BM25_INDEX = None
+    await message.reply(
+        f"✅ Гайд добавлен!\n\n"
+        f"📂 *Категория:* {category}\n"
+        f"📖 *Название:* {title}\n"
+        f"🔗 {url}",
+        parse_mode="Markdown",
+    )
+
+
+@dp.message(Command("remove_guide"))
+async def remove_guide_cmd(message: types.Message, command: CommandObject):
+    """Remove a guide: /remove_guide Категория | Название"""
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    if not command.args:
+        await message.reply(
+            "📌 *Формат:* `/remove_guide Категория | Название`\n\n"
+            "*Пример:*\n`/remove_guide 🎮 Игры | Minecraft Switch`",
+            parse_mode="Markdown",
+        )
+        return
+    parts = [p.strip() for p in command.args.split('|')]
+    if len(parts) < 2:
+        await message.reply("❌ Нужно две части через `|`: `Категория | Название`", parse_mode="Markdown")
+        return
+    category, title = parts[0], parts[1]
+    if category not in GUIDES or title not in GUIDES.get(category, {}):
+        await message.reply(
+            f"❌ Гайд `{title}` не найден в категории `{category}`.",
+            parse_mode="Markdown",
+        )
+        return
+    del GUIDES[category][title]
+    if not GUIDES[category]:
+        del GUIDES[category]
+    save_guides()
+    global BM25_INDEX
+    BM25_INDEX = None
+    await message.reply(
+        f"🗑️ Гайд удалён:\n📂 `{category}` → `{title}`",
+        parse_mode="Markdown",
+    )
+
+
+@dp.message(Command("edit_guide"))
+async def edit_guide_cmd(message: types.Message, command: CommandObject):
+    """Edit guide URL: /edit_guide Категория | Название | Новый URL"""
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    if not command.args:
+        await message.reply(
+            "📌 *Формат:* `/edit_guide Категория | Название | Новый URL`",
+            parse_mode="Markdown",
+        )
+        return
+    parts = [p.strip() for p in command.args.split('|')]
+    if len(parts) < 3:
+        await message.reply("❌ Нужно три части через `|`", parse_mode="Markdown")
+        return
+    category, title, new_url = parts[0], parts[1], parts[2]
+    if category not in GUIDES or title not in GUIDES.get(category, {}):
+        await message.reply(f"❌ Гайд `{title}` не найден в `{category}`.", parse_mode="Markdown")
+        return
+    old_url = GUIDES[category][title]
+    GUIDES[category][title] = new_url
+    save_guides()
+    global BM25_INDEX
+    BM25_INDEX = None
+    await message.reply(
+        f"✏️ Гайд обновлён!\n\n"
+        f"📂 *Категория:* {category}\n"
+        f"📖 *Название:* {title}\n"
+        f"🔗 *Старый URL:* {old_url}\n"
+        f"🔗 *Новый URL:* {new_url}",
+        parse_mode="Markdown",
+    )
+
+
+@dp.message(Command("list_guides"))
+async def list_guides_cmd(message: types.Message, command: CommandObject):
+    """List guides in a category: /list_guides Категория"""
+    user_id = message.from_user.id
+    if ADMIN_IDS and user_id not in ADMIN_IDS:
+        await message.reply("❌ У вас нет прав на выполнение этой операции.")
+        return
+    category = (command.args or "").strip()
+    if not category:
+        cats = "\n".join(f"• `{c}`" for c in GUIDES)
+        await message.reply(
+            f"📂 *Доступные категории:*\n{cats}\n\n"
+            "Используйте `/list_guides Категория` для просмотра гайдов.",
+            parse_mode="Markdown",
+        )
+        return
+    # fuzzy category match
+    best = next((c for c in GUIDES if c.lower() == category.lower()), None)
+    if best is None:
+        best = next((c for c in GUIDES if category.lower() in c.lower()), None)
+    if best is None:
+        await message.reply(f"❌ Категория не найдена: `{category}`", parse_mode="Markdown")
+        return
+    guides = GUIDES[best]
+    if not guides:
+        await message.reply(f"📭 Категория `{best}` пуста.", parse_mode="Markdown")
+        return
+    lines = [f"📚 *{best}* — {len(guides)} гайдов\n"]
+    for i, (t, u) in enumerate(guides.items(), 1):
+        lines.append(f"{i}. [{t}]({u})")
+    await safe_send(message, "\n".join(lines), disable_web_page_preview=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INLINE MODE — search guides from any chat: @botname <query>
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dp.inline_query()
+async def inline_guide_search(query: InlineQuery):
+    search_text = query.query.strip()
+    results = []
+
+    if not search_text:
+        # Show a random sample of guides as suggestions
+        import random as _rnd
+        sample = []
+        for cat, guides in GUIDES.items():
+            for title, url in guides.items():
+                if url:
+                    sample.append((cat, title, url))
+        _rnd.shuffle(sample)
+        for cat, title, url in sample[:20]:
+            results.append(
+                InlineQueryResultArticle(
+                    id=str(uuid.uuid4()),
+                    title=title,
+                    input_message_content=InputTextMessageContent(
+                        message_text=f"📖 <b>{escape_html(title)}</b>\n📂 {escape_html(cat)}\n{url}",
+                        parse_mode="HTML",
+                        disable_web_page_preview=True,
+                    ),
+                    description=cat,
+                    thumb_url=None,
+                )
+            )
+        await query.answer(results, cache_time=60, is_personal=False)
+        return
+
+    # Use existing BM25 + fuzzy search
+    found = _search_guides(search_text, top_n=20)
+    for entry, score in found:
+        if score < 20:
+            continue
+        title = entry.get('title', '')
+        url = entry.get('url', '')
+        cat = entry.get('category', '')
+        if not url:
+            continue
+        results.append(
+            InlineQueryResultArticle(
+                id=str(uuid.uuid4()),
+                title=title,
+                input_message_content=InputTextMessageContent(
+                    message_text=f"📖 <b>{escape_html(title)}</b>\n📂 {escape_html(cat)}\n{url}",
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                ),
+                description=f"{cat} · {round(score)}%",
+                thumb_url=None,
+            )
+        )
+
+    if not results:
+        results.append(
+            InlineQueryResultArticle(
+                id="no_results",
+                title="❌ Ничего не найдено",
+                input_message_content=InputTextMessageContent(
+                    message_text=f"❌ По запросу <b>{escape_html(search_text)}</b> ничего не найдено.\n"
+                                 "Попробуй /guide или /all в боте @Ryazhenkabestcfw",
+                    parse_mode="HTML",
+                ),
+                description="Попробуйте другой запрос",
+            )
+        )
+
+    await query.answer(results[:20], cache_time=15, is_personal=False)
+
 
 async def main():
     logging.basicConfig(level=logging.INFO)
