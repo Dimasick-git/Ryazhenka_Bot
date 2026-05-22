@@ -338,5 +338,24 @@
     "[2025-09-08] Как сделать автозакрытие окна в GoldHEN": "https://www.youtube.com/shorts/7n0HNs-zUp4",
     "[2025-09-07] Как обновить GoldHEN на прошитой Playstation 4 версия ПО 9.60 12.02": "https://www.youtube.com/watch?v=fNOabyujEfg",
     "[2025-09-03] Как настроить Retroarch на Nintendo switch": "https://www.youtube.com/watch?v=BlrP6c6x9ic"
+  },
+  "🥛 Ryazhenka CFW": {
+    "Ryazhenka CFW (главный репозиторий)": "https://github.com/Dimasick-git/Ryzhenka",
+    "Ryazhenka Tuner (пресеты производительности)": "https://github.com/Dimasick-git/Ryazhenkabestcfw-Tuner",
+    "RyazhaTune (фоновая музыка)": "https://github.com/Dimasick-git/RyazhaTune",
+    "RYAZHA AI (умный помощник)": "https://dimasick-git.github.io/RyazhaAI",
+    "Telegram канал": "https://t.me/Ryazhenkabestcfw"
+  },
+  "🤖 AI и инструменты": {
+    "RYAZHA AI веб-интерфейс": "https://dimasick-git.github.io/RyazhaAI",
+    "RYAZHA AI GitHub": "https://github.com/Dimasick-git/RyazhaAI",
+    "ChatGPT (онлайн)": "https://chat.openai.com",
+    "Claude AI (онлайн)": "https://claude.ai"
+  },
+  "📊 Мониторинг и статус": {
+    "Ryazha Status Monitor (ovl)": "https://github.com/Dimasick-git/Ryazha-Status-Monitor",
+    "Ryazha Cheker (мониторинг репо)": "https://github.com/Dimasick-git/Ryazha-cheker",
+    "Nintendo Switch Status (ninshop)": "https://www.nintendo.com/en-US/switch/",
+    "AtmosphereBot (статус)": "https://github.com/Atmosphere-NX/Atmosphere/releases"
   }
 }
