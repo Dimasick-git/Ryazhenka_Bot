@@ -273,6 +273,84 @@ SETTINGS = load_settings()
 YT_PRUNE_REMOVED = SETTINGS.get('yt_prune_removed', YT_PRUNE_REMOVED)
 YT_KEEP_LIMIT = SETTINGS.get('yt_keep_limit', YT_KEEP_LIMIT)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# USER FAVORITES
+# ─────────────────────────────────────────────────────────────────────────────
+FAVORITES_FILE = 'favorites.json'
+
+def _load_favorites() -> dict:
+    try:
+        if os.path.exists(FAVORITES_FILE):
+            with open(FAVORITES_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def _save_favorites(data: dict) -> None:
+    try:
+        with open(FAVORITES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logging.error(f"Failed saving favorites: {e}")
+
+USER_FAVORITES: dict = _load_favorites()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GUIDE RATINGS
+# ─────────────────────────────────────────────────────────────────────────────
+RATINGS_FILE = 'ratings.json'
+
+def _load_ratings() -> dict:
+    try:
+        if os.path.exists(RATINGS_FILE):
+            with open(RATINGS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def _save_ratings(data: dict) -> None:
+    try:
+        with open(RATINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logging.error(f"Failed saving ratings: {e}")
+
+GUIDE_RATINGS: dict = _load_ratings()
+
+def _make_rating_keyboard(guide_key: str) -> InlineKeyboardMarkup:
+    r = GUIDE_RATINGS.get(guide_key, {'up': 0, 'down': 0})
+    up, down = r.get('up', 0), r.get('down', 0)
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text=f"👍 {up}", callback_data=f"rate|up|{guide_key}"),
+        InlineKeyboardButton(text=f"👎 {down}", callback_data=f"rate|down|{guide_key}"),
+        InlineKeyboardButton(text="⭐ В избранное", callback_data=f"favadd|{guide_key}"),
+    ]])
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GUIDES META (timestamps for /new command)
+# ─────────────────────────────────────────────────────────────────────────────
+GUIDES_META_FILE = 'guides_meta.json'
+
+def _load_guides_meta() -> dict:
+    try:
+        if os.path.exists(GUIDES_META_FILE):
+            with open(GUIDES_META_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def _save_guides_meta(data: dict) -> None:
+    try:
+        with open(GUIDES_META_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logging.error(f"Failed saving guides_meta: {e}")
+
+GUIDES_META: dict = _load_guides_meta()
+
 
 def normalize(text: str) -> str:
     """Lowercase, remove punctuation and extra spaces for deduplication/search."""
@@ -985,10 +1063,14 @@ async def send_guide(message: types.Message, command: CommandObject):
 
     if matched and best_score >= 75:
         title, category, url = matched
+        guide_key = hashlib.md5(url.encode('utf-8')).hexdigest()[:16]
+        # Store meta for favadd callback
+        GUIDE_RATINGS[f"_meta_{guide_key}"] = {'title': title, 'url': url, 'category': category}
         await message.reply(
-            f"✅ Нашёл гайд в категории *{category}* (оценка {best_score}):\n\n"
+            f"✅ Нашёл гайд в категории *{category}*:\n\n"
             f"*{title}*\n{url}",
-            parse_mode="Markdown"
+            parse_mode="Markdown",
+            reply_markup=_make_rating_keyboard(guide_key),
         )
         return
 
@@ -1201,11 +1283,19 @@ async def help_command(message: types.Message):
         "👋 /start — Приветствие и быстрые ссылки\n"
         "📋 /all — Показать все категории\n"
         "🔍 /guide `<тема>` — Найти гайд (fuzzy search)\n"
+        "🔎 /search `<тема>` — Alias для /guide\n"
         "🧠 /aiguide `<текст>` — Умный поиск (BM25 + fuzzy)\n"
         "🎲 /random `[категория]` — Случайный гайд\n"
+        "🆕 /new — Последние добавленные гайды\n"
         "📊 /stats — Статистика базы гайдов\n"
         "🏆 /top — Топ категорий по количеству гайдов\n"
         "📦 /recommend — Репозитории автора\n\n"
+        "⭐ *Избранное:*\n"
+        "/fav — Показать избранное\n"
+        "/fav add `<тема>` — Добавить гайд\n"
+        "/fav remove `<номер>` — Удалить\n\n"
+        "📬 *Обратная связь:*\n"
+        "/feedback `<текст>` — Предложить новый гайд\n\n"
         "🔍 *Inline-режим:*\n"
         "Напиши `@botname запрос` в любом чате, чтобы найти гайд без открытия бота!\n\n"
         "🔐 *Админ-команды:*\n"
@@ -1217,6 +1307,245 @@ async def help_command(message: types.Message):
         "🛡️ /admin\_help — Все админ-команды\n"
     )
     await message.reply(text, parse_mode='Markdown')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# /search — alias for /guide
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dp.message(Command("search"))
+async def search_alias(message: types.Message, command: CommandObject):
+    await send_guide(message, command)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# /new — show recently added guides
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dp.message(Command("new"))
+async def new_guides(message: types.Message):
+    recent = sorted(
+        GUIDES_META.items(),
+        key=lambda x: x[1].get('added_at', ''),
+        reverse=True,
+    )[:10]
+
+    if not recent:
+        await message.reply(
+            "📅 История добавлений пока пуста.\n"
+            "Новые гайды будут отслеживаться — добавляй через /add\\_guide!",
+            parse_mode='Markdown',
+        )
+        return
+
+    text = "🆕 *Последние добавленные гайды:*\n\n"
+    for key, meta in recent:
+        title = meta.get('title', key)
+        url = meta.get('url', '')
+        cat = meta.get('category', '')
+        added = meta.get('added_at', '')[:10]
+        if url:
+            text += f"• [{title}]({url}) — _{cat}_ `{added}`\n"
+
+    await message.reply(text, parse_mode='Markdown', disable_web_page_preview=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# /fav — user favorites
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dp.message(Command("fav"))
+async def favorites_command(message: types.Message, command: CommandObject):
+    user_id = str(message.from_user.id)
+    args = (command.args or "").strip()
+
+    if not args or args == "list":
+        favs = USER_FAVORITES.get(user_id, [])
+        if not favs:
+            await message.reply(
+                "⭐ У вас нет избранных гайдов.\n\n"
+                "Добавить: `/fav add <тема>`\n"
+                "Или нажмите ⭐ под любым гайдом.",
+                parse_mode='Markdown',
+            )
+            return
+        text = f"⭐ *Ваше избранное* ({len(favs)} гайдов):\n\n"
+        for i, fav in enumerate(favs, 1):
+            text += f"{i}. [{fav['title']}]({fav['url']}) — _{fav['category']}_\n"
+        text += "\n🗑️ Удалить: `/fav remove <номер>`"
+        await message.reply(text, parse_mode='Markdown', disable_web_page_preview=True)
+        return
+
+    if args.startswith("add "):
+        query = args[4:].strip()
+        if not query:
+            await message.reply("Укажи тему: `/fav add <тема>`", parse_mode='Markdown')
+            return
+        global BM25_INDEX
+        if BM25_INDEX is None:
+            BM25_INDEX = _build_bm25_index()
+        found = _search_guides(query, top_n=1)
+        if not found or found[0][1] < 30:
+            await message.reply(f"❌ Гайд по запросу «{query}» не найден.")
+            return
+        entry, _ = found[0]
+        title = entry.get('title', '')
+        url = entry.get('url', '')
+        category = entry.get('category', '')
+        if not url:
+            await message.reply("❌ У этого гайда нет ссылки.")
+            return
+        favs = USER_FAVORITES.setdefault(user_id, [])
+        if any(f['url'] == url for f in favs):
+            await message.reply(f"⭐ «{title}» уже в избранном!")
+            return
+        if len(favs) >= 50:
+            await message.reply("❌ Максимум 50 гайдов в избранном. Удали лишние через /fav remove <номер>.")
+            return
+        favs.append({'title': title, 'url': url, 'category': category})
+        _save_favorites(USER_FAVORITES)
+        await message.reply(f"⭐ Добавлено в избранное: *{title}*", parse_mode='Markdown')
+        return
+
+    if args.startswith(("remove ", "rm ")):
+        num_str = args.split(None, 1)[1] if " " in args else ""
+        if not num_str.isdigit():
+            await message.reply("Укажи номер: `/fav remove <номер>`", parse_mode='Markdown')
+            return
+        idx = int(num_str) - 1
+        favs = USER_FAVORITES.get(user_id, [])
+        if idx < 0 or idx >= len(favs):
+            await message.reply(f"❌ Нет гайда #{idx + 1} в избранном.")
+            return
+        removed = favs.pop(idx)
+        _save_favorites(USER_FAVORITES)
+        await message.reply(f"🗑️ Удалено из избранного: *{removed['title']}*", parse_mode='Markdown')
+        return
+
+    await message.reply(
+        "⭐ *Команды избранного:*\n"
+        "/fav — показать список\n"
+        "/fav add `<тема>` — добавить\n"
+        "/fav remove `<номер>` — удалить",
+        parse_mode='Markdown',
+    )
+
+
+@dp.callback_query(F.data.startswith("favadd|"))
+async def favadd_callback(callback_query: types.CallbackQuery):
+    guide_key = callback_query.data.split("|", 1)[1]
+    user_id = str(callback_query.from_user.id)
+    entry = GUIDE_RATINGS.get(f"_meta_{guide_key}")
+    if not entry:
+        await callback_query.answer("❌ Используй /fav add <тема>")
+        return
+    title = entry.get('title', '')
+    url = entry.get('url', '')
+    category = entry.get('category', '')
+    if not url:
+        await callback_query.answer("❌ У гайда нет ссылки.")
+        return
+    favs = USER_FAVORITES.setdefault(user_id, [])
+    if any(f['url'] == url for f in favs):
+        await callback_query.answer("⭐ Уже в избранном!")
+        return
+    if len(favs) >= 50:
+        await callback_query.answer("❌ Максимум 50 гайдов в избранном.")
+        return
+    favs.append({'title': title, 'url': url, 'category': category})
+    _save_favorites(USER_FAVORITES)
+    await callback_query.answer(f"⭐ Добавлено: {title}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Guide ratings (👍/👎)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dp.callback_query(F.data.startswith("rate|"))
+async def handle_rating(callback_query: types.CallbackQuery):
+    parts = callback_query.data.split("|", 2)
+    if len(parts) != 3:
+        await callback_query.answer("❌ Ошибка")
+        return
+    _, direction, guide_key = parts
+    user_id = str(callback_query.from_user.id)
+
+    voted_key = f"_voted_{user_id}_{guide_key}"
+    if GUIDE_RATINGS.get(voted_key):
+        await callback_query.answer("Вы уже оценили этот гайд!")
+        return
+
+    ratings = GUIDE_RATINGS.setdefault(guide_key, {'up': 0, 'down': 0})
+    if direction == 'up':
+        ratings['up'] = ratings.get('up', 0) + 1
+        await callback_query.answer("👍 Спасибо за оценку!")
+    else:
+        ratings['down'] = ratings.get('down', 0) + 1
+        await callback_query.answer("👎 Спасибо за оценку!")
+
+    GUIDE_RATINGS[voted_key] = True
+    _save_ratings(GUIDE_RATINGS)
+    try:
+        await callback_query.message.edit_reply_markup(
+            reply_markup=_make_rating_keyboard(guide_key)
+        )
+    except Exception:
+        pass
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# /feedback — suggest a guide to admins
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dp.message(Command("feedback"))
+async def user_feedback(message: types.Message, command: CommandObject):
+    text = (command.args or "").strip()
+    if not text:
+        await message.reply(
+            "📬 *Предложить гайд администраторам:*\n\n"
+            "`/feedback <название | ссылка | описание>`\n\n"
+            "*Пример:*\n"
+            "`/feedback https://github.com/user/repo — Отличный инструмент для Switch`",
+            parse_mode='Markdown',
+        )
+        return
+
+    user = message.from_user
+    user_info = f"@{user.username}" if user.username else f"ID {user.id}"
+    msg_to_admin = (
+        f"📬 *Предложение гайда*\n"
+        f"{'─' * 30}\n"
+        f"👤 От: {user_info}\n"
+        f"💬 Текст: {text}\n\n"
+        f"_Добавить: /add\\_guide Категория | Название | URL_"
+    )
+
+    if not ADMIN_IDS:
+        await message.reply(
+            "❌ Администраторы не настроены.\n"
+            "Напиши напрямую: @Ryazhenkabestcfw"
+        )
+        return
+
+    sent = False
+    for aid in ADMIN_IDS:
+        try:
+            await bot.send_message(aid, msg_to_admin, parse_mode='Markdown')
+            sent = True
+        except Exception:
+            pass
+
+    if sent:
+        await message.reply(
+            "✅ Спасибо! Предложение отправлено администраторам.\n"
+            "Если гайд подойдёт, его добавят в базу!"
+        )
+    else:
+        await message.reply(
+            "❌ Не удалось отправить.\n"
+            "Напиши напрямую: @Ryazhenkabestcfw"
+        )
+
 
 def _tokenize(text: str) -> list:
     if not text:
@@ -1718,8 +2047,17 @@ async def handle_aiguide(message: types.Message):
     if quick and quick[0][1] >= 0.35 * 100:  # scaled 0..100 threshold ~35
         best, score = quick[0]
         if score >= 75:
-            # send plain text to avoid Markdown parsing issues from user-provided titles/urls
-            await message.reply(f"✅ Найден гайд 🎯: {best.get('title')}\nКатегория: {best.get('category')}\n{best.get('url')}")
+            guide_url = best.get('url', '')
+            guide_key = hashlib.md5(guide_url.encode('utf-8')).hexdigest()[:16]
+            GUIDE_RATINGS[f"_meta_{guide_key}"] = {
+                'title': best.get('title', ''),
+                'url': guide_url,
+                'category': best.get('category', ''),
+            }
+            await message.reply(
+                f"✅ Найден гайд 🎯: {best.get('title')}\nКатегория: {best.get('category')}\n{guide_url}",
+                reply_markup=_make_rating_keyboard(guide_key),
+            )
             return
         # otherwise suggest
         text = "🤔 Похоже, ничего точного не найдено. Вот похожие варианты 🔍:\n\n"
@@ -2008,6 +2346,15 @@ async def add_guide_cmd(message: types.Message, command: CommandObject):
         return
     GUIDES[category][title] = url
     save_guides()
+    # Track addition timestamp for /new command
+    meta_key = f"{category}|{title}"
+    GUIDES_META[meta_key] = {
+        'title': title,
+        'url': url,
+        'category': category,
+        'added_at': __import__('datetime').datetime.utcnow().isoformat()[:19],
+    }
+    _save_guides_meta(GUIDES_META)
     global BM25_INDEX
     BM25_INDEX = None
     await message.reply(
