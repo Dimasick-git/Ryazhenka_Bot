@@ -25,9 +25,9 @@ async def handle_category(callback_query: types.CallbackQuery) -> None:
         InlineKeyboardButton(text="⬅ Назад 🔙", callback_data="back_to_categories")
     ]])
     try:
-        await callback_query.message.edit_text(text, disable_web_page_preview=True, reply_markup=kb)
+        await callback_query.message.edit_text(text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb)
     except Exception:
-        await callback_query.message.answer(text, disable_web_page_preview=True, reply_markup=kb)
+        await callback_query.message.answer(text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb)
     await callback_query.answer()
 
 

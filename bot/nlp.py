@@ -191,7 +191,7 @@ def generate_variants(token: str) -> list:
         if " " in v:
             new.add(v.replace(" ", ""))
             new.add(v.replace(" ", "-"))
-        elif len(v) > 4 and v.startswith("emu"):
+        elif len(v) > 4 and v.startswith("emu") and len(v) > 3:
             new.add("emu " + v[3:])
         new.add(simple_stem(v))
     variants.update(new)
