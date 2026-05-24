@@ -33,6 +33,9 @@ guides.json.bak.*
 bot_settings.json
 yt_channel_cache.json
 generated_synonyms.json
+favorites.json
+ratings.json
+guides_meta.json
 
 # OS
 .DS_Store
