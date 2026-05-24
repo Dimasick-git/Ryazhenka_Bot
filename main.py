@@ -937,9 +937,9 @@ async def handle_category(callback_query: types.CallbackQuery):
     ])
 
     try:
-        await callback_query.message.edit_text(text, disable_web_page_preview=True, reply_markup=kb_nav)
+        await callback_query.message.edit_text(text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb_nav)
     except Exception:
-        await callback_query.message.answer(text, disable_web_page_preview=True, reply_markup=kb_nav)
+        await callback_query.message.answer(text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb_nav)
 
     await callback_query.answer()
 
@@ -1769,7 +1769,7 @@ def _generate_variants(token: str) -> list:
             # try inserting space in camel-ish tokens
             if len(v) > 4:
                 # emunand -> emu nand
-                if v.startswith('emu') and 'emu' not in ('emu',):
+                if v.startswith('emu'):
                     new.add('emu ' + v[3:])
         # add stemmed variant
         st = _simple_stem(v)
