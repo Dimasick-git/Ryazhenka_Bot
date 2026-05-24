@@ -34,6 +34,12 @@ def _cleanup_dialog_ctx() -> None:
     for k in stale:
         DIALOG_CTX.pop(k, None)
         DIALOG_CTX_TIME.pop(k, None)
+    # Evict oldest entries if still too large
+    if len(DIALOG_CTX) > 500:
+        oldest = sorted(DIALOG_CTX_TIME.items(), key=lambda x: x[1])[:len(DIALOG_CTX) - 500]
+        for k, _ in oldest:
+            DIALOG_CTX.pop(k, None)
+            DIALOG_CTX_TIME.pop(k, None)
 
 
 @router.message(Command("start"))

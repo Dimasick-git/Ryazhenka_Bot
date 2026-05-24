@@ -59,9 +59,9 @@ async def open_suggestion(callback_query: types.CallbackQuery) -> None:
             await callback_query.message.reply(f"Открываю гайд: {title}\n{url}")
         except Exception:
             await callback_query.message.answer(f"{title}\n{url}")
+        await callback_query.answer()
     else:
         await callback_query.answer("❌ Нет URL для этого гайда")
-    await callback_query.answer()
 
 
 @router.callback_query(F.data.startswith("rate|"))

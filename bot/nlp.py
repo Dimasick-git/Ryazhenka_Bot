@@ -290,7 +290,8 @@ def search_guides(query: str, top_n: int = 10) -> list:
         if bm_scores is not None:
             try:
                 bm = bm_scores[idx]
-                bm_norm = min(100.0, bm / (bm_scores[0] + 1e-9) * 100.0)
+                _bm_max = max(bm_scores) if bm_scores else 1e-9
+                bm_norm = min(100.0, bm / (_bm_max + 1e-9) * 100.0)
                 score = max(score, bm_norm)
             except Exception:
                 pass

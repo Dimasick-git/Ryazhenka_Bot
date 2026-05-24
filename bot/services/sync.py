@@ -1,4 +1,5 @@
 """Background sync: YouTube channels + GitHub releases → GUIDES."""
+import asyncio
 import logging
 import re
 
@@ -7,6 +8,12 @@ import aiohttp
 from .. import storage
 from ..config import GITHUB_REPO
 from . import youtube, github
+
+_sync_lock = asyncio.Lock()
+
+
+def _is_valid_url(url: str) -> bool:
+    return isinstance(url, str) and url.startswith("https://")
 
 
 async def resolve_duckduckgo_first(title: str) -> str:
@@ -83,70 +90,77 @@ async def resolve_auto_guides_links(bot, notify_admins: bool = True) -> None:
 
 
 async def sync_sources() -> dict:
-    summary = {"youtube_added": 0, "github_added": 0}
-    # YouTube
-    try:
-        total_added = 0
-        for ch in storage.YT_CHANNELS:
-            cid = ch
-            if not cid.startswith("UC"):
-                resolved = await youtube.resolve_channel_id(ch)
-                if resolved:
-                    cid = resolved
-            logging.info("Fetching YouTube for channel '%s' resolved to '%s'", ch, cid)
-            channel_title, yt_entries = await youtube.fetch_youtube_videos(cid) if cid else (None, [])
-            logging.info("Fetched %d entries from YouTube channel %s (%s)", len(yt_entries), cid, channel_title)
-            if yt_entries:
-                # persist UC id for stability
-                if cid and not ch.startswith("UC"):
-                    try:
-                        idx = storage.YT_CHANNELS.index(ch)
-                        storage.YT_CHANNELS[idx] = cid
-                        storage.save_yt_channels()
-                    except ValueError:
-                        pass
-                safe_name = re.sub(r"[^0-9a-zA-Zа-яёА-ЯЁ _\-]", " ", channel_title or ch or cid or "Видео").strip()
-                cat_name = f"YouTube - {safe_name}"
+    if _sync_lock.locked():
+        return {"skipped": True, "reason": "sync already in progress"}
+    async with _sync_lock:
+        summary = {"youtube_added": 0, "github_added": 0}
+        # YouTube
+        try:
+            total_added = 0
+            for ch in storage.YT_CHANNELS:
+                cid = ch
+                if not cid.startswith("UC"):
+                    resolved = await youtube.resolve_channel_id(ch)
+                    if resolved:
+                        cid = resolved
+                logging.info("Fetching YouTube for channel '%s' resolved to '%s'", ch, cid)
+                channel_title, yt_entries = await youtube.fetch_youtube_videos(cid) if cid else (None, [])
+                logging.info("Fetched %d entries from YouTube channel %s (%s)", len(yt_entries), cid, channel_title)
+                # Filter out entries with invalid URLs
+                yt_entries = [(t, u) for t, u in yt_entries if _is_valid_url(u)]
+                if yt_entries:
+                    # persist UC id for stability
+                    if cid and not ch.startswith("UC"):
+                        try:
+                            idx = storage.YT_CHANNELS.index(ch)
+                            storage.YT_CHANNELS[idx] = cid
+                            storage.save_yt_channels()
+                        except ValueError:
+                            pass
+                    safe_name = re.sub(r"[^0-9a-zA-Zа-яёА-ЯЁ _\-]", " ", channel_title or ch or cid or "Видео").strip()
+                    cat_name = f"YouTube - {safe_name}"
 
-                def _date_key(tu):
-                    m = re.match(r"\[(\d{4}-\d{2}-\d{2})\]", tu[0])
-                    return m.group(1) if m else "1970-01-01"
+                    def _date_key(tu):
+                        m = re.match(r"\[(\d{4}-\d{2}-\d{2})\]", tu[0])
+                        return m.group(1) if m else "1970-01-01"
 
-                yt_entries.sort(key=_date_key, reverse=True)
-                added = storage.merge_entries_into_category(cat_name, yt_entries)
-                total_added += added
+                    yt_entries.sort(key=_date_key, reverse=True)
+                    added = storage.merge_entries_into_category(cat_name, yt_entries)
+                    total_added += added
 
-                # prune removed videos
-                if storage.YT_PRUNE_REMOVED:
-                    existing_map = {storage.normalize_url(v): k for k, v in storage.GUIDES.get(cat_name, {}).items() if v}
-                    feed_urls = {storage.normalize_url(u) for (_, u) in yt_entries}
-                    for nu, key in list(existing_map.items()):
-                        if nu and nu not in feed_urls:
-                            try:
-                                del storage.GUIDES[cat_name][key]
-                            except Exception:
-                                pass
+                    # prune removed videos
+                    if storage.YT_PRUNE_REMOVED:
+                        existing_map = {storage.normalize_url(v): k for k, v in storage.GUIDES.get(cat_name, {}).items() if v}
+                        feed_urls = {storage.normalize_url(u) for (_, u) in yt_entries}
+                        for nu, key in list(existing_map.items()):
+                            if nu and nu not in feed_urls:
+                                try:
+                                    del storage.GUIDES[cat_name][key]
+                                except Exception:
+                                    pass
 
-                # enforce keep limit
-                keys = list(storage.GUIDES.get(cat_name, {}).keys())
-                keys_sorted = sorted(keys, key=lambda k: re.match(r"\[(\d{4}-\d{2}-\d{2})\]", k).group(1)
-                                     if re.match(r"\[(\d{4}-\d{2}-\d{2})\]", k) else "1970-01-01", reverse=True)
-                for old in keys_sorted[storage.YT_KEEP_LIMIT:]:
-                    try:
-                        del storage.GUIDES[cat_name][old]
-                    except Exception:
-                        pass
-        summary["youtube_added"] = total_added
-    except Exception as e:
-        logging.warning("YouTube sync failed: %s", e)
+                    # enforce keep limit
+                    keys = list(storage.GUIDES.get(cat_name, {}).keys())
+                    keys_sorted = sorted(keys, key=lambda k: re.match(r"\[(\d{4}-\d{2}-\d{2})\]", k).group(1)
+                                         if re.match(r"\[(\d{4}-\d{2}-\d{2})\]", k) else "1970-01-01", reverse=True)
+                    for old in keys_sorted[storage.YT_KEEP_LIMIT:]:
+                        try:
+                            del storage.GUIDES[cat_name][old]
+                        except Exception:
+                            pass
+            summary["youtube_added"] = total_added
+        except Exception as e:
+            logging.warning("YouTube sync failed: %s", e)
 
-    # GitHub releases
-    try:
-        gh_entries = await github.fetch_github_releases(GITHUB_REPO) if GITHUB_REPO else []
-        if gh_entries:
-            summary["github_added"] = storage.merge_entries_into_category("📦 Прошивка и CFW", gh_entries)
-    except Exception as e:
-        logging.warning("GitHub sync failed: %s", e)
+        # GitHub releases
+        try:
+            gh_entries = await github.fetch_github_releases(GITHUB_REPO) if GITHUB_REPO else []
+            # Filter out entries with invalid URLs
+            gh_entries = [(t, u) for t, u in gh_entries if _is_valid_url(u)]
+            if gh_entries:
+                summary["github_added"] = storage.merge_entries_into_category("📦 Прошивка и CFW", gh_entries)
+        except Exception as e:
+            logging.warning("GitHub sync failed: %s", e)
 
-    storage.save_guides()
-    return summary
+        storage.save_guides()
+        return summary

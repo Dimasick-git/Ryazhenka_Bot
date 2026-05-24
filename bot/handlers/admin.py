@@ -16,7 +16,9 @@ router = Router()
 
 
 def _is_admin(user_id: int) -> bool:
-    return not ADMIN_IDS or user_id in ADMIN_IDS
+    if not ADMIN_IDS:
+        return False
+    return user_id in ADMIN_IDS
 
 
 def _require_admin(handler):
@@ -159,6 +161,9 @@ async def remove_guide_cmd(message: types.Message, command: CommandObject) -> No
     if not storage.GUIDES[category]:
         del storage.GUIDES[category]
     storage.save_guides()
+    meta_key = f"{category}|{title}"
+    storage.GUIDES_META.pop(meta_key, None)
+    storage.save_guides_meta()
     invalidate_index()
     await message.reply(f"🗑️ Гайд удалён:\n📂 `{category}` → `{title}`", parse_mode="Markdown")
 
