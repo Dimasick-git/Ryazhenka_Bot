@@ -1,361 +1,357 @@
 {
- " Прошивка и CFW": {
- " Kefir CFW (русская сборка)": "https://github.com/rashevskyv/kefir/releases",
- " Kefir Updater (автообновление)": "https://github.com/rashevskyv/kefir-updater",
- " 4IFIR (оверклокинг)": "https://github.com/rashevskyv/4IFIR",
- " 4IFIR Releases": "https://github.com/rashevskyv/4IFIR/releases",
- " Ultra NX (легковесная сборка)": "https://github.com/Ultra-NX/UltraNX/releases",
- " NX-Venom (all-in-one bundle)": "https://github.com/CatcherITGF/NX-Venom/releases",
- " Ryazhenka CFW": "https://github.com/Dimasick-git/Ryzhenka/releases",
- "Atmosphère официальная": "https://github.com/Atmosphere-NX/Atmosphere/releases",
- "Hekate (загрузчик)": "https://github.com/CTCaer/hekate/releases",
- "Sigpatches (патчи)": "https://github.com/ITotalJustice/patches/releases",
- "DeepSea (CFW пакет)": "https://github.com/Team-Neptune/DeepSea/releases",
- "Ryazhenka": "https://github.com/Dimasick-git/Ryzhenka/releases/tag/v4.0.0",
- " Ryazhenka BEST CFW v5.0.0 — Ultimate Premium Edition ⭐": "https://github.com/Dimasick-git/Ryzhenka/releases/tag/v5.0.0"
- },
- " Battery Fix (калибровка)": {
- "Battery Desync Fix NX": "https://github.com/CTCaer/battery_desync_fix_nx",
- "Battery Desync Fix релизы": "https://github.com/CTCaer/battery_desync_fix_nx/releases",
- "Гайд Nintendo по калибровке": "https://en-americas-support.nintendo.com/app/answers/detail/a_id/27111",
- "Battery Desync Fix на GameBrew": "https://www.gamebrew.org/wiki/Battery_Desync_Fix_NX_Switch"
- },
- " Установка NSP/XCI/NSZ": {
- "DBI (лучший установщик)": "https://github.com/rashevskyv/dbi/releases",
- "Tinfoil (сетевой установщик)": "https://tinfoil.io/Download",
- "Goldleaf": "https://github.com/XorTroll/Goldleaf/releases",
- "Awoo Installer": "https://github.com/Huntereb/Awoo-Installer/releases",
- "NS-USBloader (ПК)": "https://github.com/developersu/ns-usbloader/releases",
- "Quark (для Goldleaf)": "https://github.com/XorTroll/Quark"
- },
- " Системные модули": {
- "sys-con (USB контроллеры)": "https://github.com/cathery/sys-con/releases",
- "sys-clk (оверклокинг)": "https://github.com/retronx-team/sys-clk",
- "sys-patch (автопатчинг)": "https://github.com/impeeza/sys-patch",
- "SaltyNX (инъекция кода)": "https://github.com/masagrator/SaltyNX",
- "Mission Control (Bluetooth)": "https://github.com/ndeadly/MissionControl",
- "Emuiibo (эмуляция amiibo)": "https://github.com/XorTroll/emuiibo/releases",
- "ldn_mitm (локальная сеть)": "https://github.com/spacemeowx2/ldn_mitm/releases",
- "sys-ftpd (FTP сервер)": "https://github.com/cathery/sys-ftpd/releases",
- "sys-tune (музыка на фоне)": "https://github.com/HookedBehemoth/sys-tune/releases",
- "SwitchPresence (Discord RPC)": "https://github.com/Random06457/SwitchPresence",
- "sys-hidplus (сетевой ввод)": "https://github.com/luvvyamy/sys-hidplus"
- },
- " Tesla Overlay": {
- "Tesla Menu (главное меню)": "https://github.com/WerWolv/Tesla-Menu/releases",
- "Ultrahand Overlay": "https://github.com/ppkantorski/Ultrahand-Overlay",
- "Status Monitor Overlay": "https://github.com/masagrator/Status-Monitor-Overlay/releases",
- "sys-clk Overlay": "https://github.com/Sun-Research-University/sys-clk",
- "FPSLocker": "https://github.com/masagrator/FPSLocker",
- "EdiZon Overlay": "https://github.com/proferabg/EdiZon-Overlay/releases",
- "ovl-sysmodules": "https://github.com/WerWolv/ovl-sysmodules/releases",
- "QuickNTP (синхронизация времени)": "https://github.com/nedex/QuickNTP/releases",
- "ReverseNX-RT": "https://github.com/masagrator/ReverseNX-RT/releases",
- "fastCFWswitch": "https://github.com/Hartie95/fastCFWSwitch/releases",
- "TriPlayer (аудио плеер)": "https://github.com/tallbl0nde/TriPlayer/releases",
- "Tesla Overlays список": "https://github.com/n00mkrad/tesla-overlays-list"
- },
- " Эмуляторы на Switch": {
- "RetroArch": "https://github.com/libretro/RetroArch/releases",
- "melonDS (NDS)": "https://github.com/RSDuck/melonDS/releases",
- "mGBA (GBA)": "https://github.com/mgba-emu/mgba/releases",
- "Snes9x (SNES)": "https://github.com/libretro/snes9x/releases",
- "DeSmuME (DS)": "https://github.com/libretro/desmume/releases",
- "PPSSPP (PSP)": "https://github.com/hrydgard/ppsspp/releases",
- "Flycast (Dreamcast)": "https://github.com/flyinghead/flycast/releases",
- "Mupen64Plus (N64)": "https://github.com/mupen64plus/mupen64plus-core/releases"
- },
- " Эмуляторы на ПК": {
- "Ryujinx (Switch эмулятор)": "https://github.com/Ryujinx/Ryujinx/releases",
- "Yuzu (архив)": "https://github.com/yuzu-emu/yuzu-mainline/releases",
- "Dolphin (GameCube/Wii)": "https://dolphin-emu.org/download/",
- "PCSX2 (PS2)": "https://pcsx2.net/downloads/",
- "RPCS3 (PS3)": "https://rpcs3.net/download",
- "Xenia (Xbox 360)": "https://github.com/xenia-project/xenia/releases",
- "Xemu (Xbox)": "https://github.com/mborgerson/xemu/releases",
- "Citra (3DS)": "https://github.com/citra-emu/citra/releases"
- },
- " EmuMMC / EmuNAND (добавлено)": {
- "EmuNAND / EmuMMC — Обзор и FAQ": "https://www.gamebrew.org/"
- },
- " Homebrew приложения": {
- "Homebrew App Store": "https://github.com/fortheusers/hb-appstore/releases",
- "nx-hbmenu": "https://github.com/switchbrew/nx-hbmenu/releases",
- "AIO Switch Updater": "https://github.com/HamletDuFromage/aio-switch-updater/releases",
- "NX-Shell (файловый менеджер)": "https://github.com/joel16/NX-Shell/releases",
- "NX-Activity-Log": "https://github.com/tallbl0nde/NX-Activity-Log/releases",
- "Linkalho (линковка аккаунтов)": "https://github.com/rdmrocha/linkalho/releases",
- "Fizeau (цвета экрана)": "https://github.com/averne/Fizeau/releases",
- "nxmp (медиаплеер)": "https://github.com/proconsule/nxmp/releases",
- "Homebrew Details": "https://github.com/tallbl0nde/Homebrew-Details/releases",
- "SimpleModManager": "https://github.com/nadrino/SimpleModManager/releases"
- },
- " Сохранения и читы": {
- "JKSV (save manager)": "https://github.com/J-D-K/JKSV/releases",
- "Checkpoint": "https://github.com/BernardoGiordano/Checkpoint/releases",
- "EdiZon (save editor)": "https://github.com/WerWolv/EdiZon/releases",
- "EdiZon-SE": "https://github.com/tomvita/EdiZon-SE/releases",
- "Breeze (чит менеджер)": "https://github.com/tomvita/Breeze-Beta/releases",
- "SaltySD": "https://github.com/masagrator/SaltySD/releases"
- },
- " Темы и кастомизация": {
- "NXThemesInstaller": "https://github.com/exelix11/SwitchThemeInjector/releases",
- "Themezer (репозиторий тем)": "https://themezer.net/",
- "Themezer-NX (загрузчик тем)": "https://github.com/suchmememanyskill/themezer-nx/releases",
- "Theme Patches": "https://github.com/exelix11/theme-patches",
- "Web Theme Injector": "https://exelix11.github.io/SwitchThemeInjector/",
- "Layout Editor Docs": "https://layoutdocs.themezer.net/"
- },
- " Моддинг игр": {
- "Switch Mods (GBAtemp)": "https://gbatemp.net/forums/nintendo-switch.283/",
- "GameBanana Mods": "https://gamebanana.com/games/6713",
- "ROM Hacks список": "https://www.gamebrew.org/wiki/List_of_Switch_rom_hacks",
- "Smash Ultimate Mods": "https://gamebanana.com/games/6498",
- "Breath of the Wild Mods": "https://gamebanana.com/games/5866",
- "Splatoon 3 Mods": "https://gamebanana.com/games/16545",
- "Pokemon Mods": "https://gamebanana.com/games/7534",
- "Mario Kart 8 Deluxe Mods": "https://gamebanana.com/games/5667",
- "Animal Crossing Mods": "https://gamebanana.com/games/7194",
- "60 FPS Patches": "https://github.com/masagrator/FPSLocker-Warehouse",
- "60 FPS Mods (GBAtemp)": "https://gbatemp.net/threads/switch-60-fps-cheat-list.572740/",
- "Layered FS Mods": "https://github.com/topics/switch-mods",
- "TOTK Mods": "https://gamebanana.com/mods/games/16626"
- },
- " Сеть и безопасность": {
- "90DNS (блокировка Nintendo)": "https://gitlab.com/a/90dns",
- "Incognito_RCM (скрытие серийника)": "https://github.com/jimzrt/Incognito_RCM/releases",
- "Exosphere (защита)": "https://github.com/Atmosphere-NX/Atmosphere",
- "FTPD Pro": "https://github.com/mtheall/ftpd/releases"
- },
- " Разработка": {
- "libnx (SDK)": "https://github.com/switchbrew/libnx",
- "devkitPro": "https://github.com/devkitPro",
- "nxlink": "https://github.com/switchbrew/switch-tools",
- "SwitchBrew Wiki": "https://switchbrew.org/wiki/Main_Page",
- "Awesome Switch Homebrew": "https://github.com/FeralAI/awesome-switch-homebrew",
- "Switch Examples": "https://github.com/switchbrew/switch-examples"
- },
- " Плагины и расширения": {
- "nx-ovlloader": "https://github.com/WerWolv/nx-ovlloader/releases",
- "libtesla (SDK для overlays)": "https://github.com/WerWolv/libtesla",
- "CaptureSight (Pokemon viewer)": "https://github.com/zaksabeast/CaptureSight/releases"
- },
- " Инструменты для ПК": {
- "TegraRcmGUI (payload инъектор)": "https://github.com/eliboa/TegraRcmGUI/releases",
- "Quark (для Goldleaf)": "https://github.com/XorTroll/Quark/releases",
- "NXDumpTool": "https://github.com/DarkMatterCore/nxdumptool/releases",
- "Lockpick_RCM (ключи)": "https://github.com/shchmue/Lockpick_RCM/releases",
- "Haku33 (ключи)": "https://github.com/dezem/Haku33/releases",
- "NSC_Builder (упаковка NSP)": "https://github.com/julesontheroad/NSC_BUILDER/releases",
- "Switch Army Knife": "https://github.com/dezem/SAK/releases",
- "NUT (USB установка)": "https://github.com/blawar/nut/releases"
- },
- " Обновление и поддержка": {},
- "🆚 Сравнение и гайды": {
- "NH Switch Guide": "https://nh-server.github.io/switch-guide/",
- "Switch Hacks Guide": "https://switch.hacks.guide/",
- "Atmosphere Docs": "https://github.com/Atmosphere-NX/Atmosphere/tree/master/docs",
- "rentry Switch Guide": "https://rentry.org/SwitchHackingIsEasy"
- },
- " Payload и загрузка": {
- "TegraExplorer": "https://github.com/suchmememanyskill/TegraExplorer/releases",
- "Argon-NX": "https://github.com/Guillem96/argon-nx/releases"
- },
- " Модчипы": {
- "PicoFly firmware": "https://github.com/Ansem-SoD/Picofly/releases",
- "PicoFly гайд": "https://gbatemp.net/download/a-definitive-picofly-install-guide.37968/",
- "NH Switch Modchip Guide": "https://guide.nx-modchip.info/",
- "HWFly-NX firmware": "https://github.com/hwfly-nx/firmware",
- "Spacecraft-NX": "https://github.com/spacemeowx2/spacecraft-nx",
- "Modchip Installation Guide": "https://switch.hacks.guide/user_guide/modchip/"
- },
- " Android/Mobile": {
- "Skyline (Switch на Android)": "https://github.com/skyline-emu/skyline",
- "TegraRcmSmash (Android)": "https://github.com/rajkosto/TegraRcmSmash",
- "Switch Android Linux": "https://github.com/natinusala/painless-linux"
- },
- " Медиа и развлечения": {
- "pPlay (видеоплеер)": "https://github.com/Cpasjuste/pplay/releases",
- "SwitchIdent": "https://github.com/joel16/SwitchIdent/releases"
- },
- " Системная информация": {
- "NX-System-Info": "https://github.com/J-D-K/NX-System-Info"
- },
- " Обучение и ресурсы": {
- "devkitPro Wiki": "https://devkitpro.org/wiki/Getting_Started",
- "libnx Docs": "https://github.com/switchbrew/libnx/wiki"
- },
- " Игровые утилиты": {
- "ACNH-Pattern-Editor": "https://acpatterns.com/editor",
- "Pokemon PKHeX": "https://github.com/kwsch/PKHeX/releases",
- "sys-botbase": "https://github.com/olliz0r/sys-botbase/releases",
- "SysBot.NET": "https://github.com/kwsch/SysBot.NET/releases"
- },
- " Готовые сборки CFW": {},
- " Дополнительные утилиты": {
- "NX File Manager": "https://github.com/joel16/NX-File-Manager/releases",
- "NX Game Info": "https://github.com/AcK77/NX_Game_Info/releases",
- "nx-hbloader": "https://github.com/switchbrew/nx-hbloader",
- "NX-FTP": "https://github.com/EasyRPG/NX-FTP"
- },
- " CFW компоненты": {
- "Hekate Bootloader": "https://github.com/CTCaer/hekate"
- },
- " PC Tools Extended": {
- "Ryujinx Updater": "https://github.com/Ryujinx/release-channel-master",
- "NX-Game-Info": "https://github.com/AcK77/NX_Game_Info",
- "Switch-Backup-Manager": "https://github.com/gibaBR/switch-backup-manager",
- "NSP Forwarder": "https://github.com/LyfeOnEdge/NSP_Forwarder",
- "Switch Theme Injector": "https://github.com/exelix11/SwitchThemeInjector"
- },
- " Документация": {
- "SwitchBrew": "https://switchbrew.org/"
- },
- " Оверклокинг": {
- "sys-clk overlay": "https://github.com/Sun-Research-University/sys-clk-Overlay",
- "NX-Venom (OC bundle)": "https://github.com/CatcherITGF/NX-Venom",
- "Ultra Tuner": "https://github.com/hanai3Bi/Switch-OC-Suite"
- },
- " Диагностика": {
- "Switch Identify": "https://github.com/joel16/SwitchIdent",
- "Status Monitor": "https://github.com/masagrator/Status-Monitor-Overlay",
- "hid-mitm Test": "https://github.com/cathery/hid-mitm"
- },
- " Файловые менеджеры": {},
- " Графика и темы Extended": {
- "Themezer Packs": "https://themezer.net/packs",
- "Custom Themes Reddit": "https://www.reddit.com/r/NXThemes/"
- },
- " Контроллеры": {
- "sys-con (USB)": "https://github.com/cathery/sys-con",
- "JoyCon Toolkit": "https://github.com/CTCaer/jc_toolkit"
- },
- " Homebrew игры": {
- "Fallout 2 CE Switch": "https://github.com/ryandeering/fallout2-ce-switch",
- "Super Mario 64 (порт)": "https://github.com/sm64-port/sm64-port",
- "Portal (порт)": "https://github.com/fgsfdsfgs/sm64-port",
- "Doom (GZDoom)": "https://github.com/drfrag666/gzdoom",
- "Quake (QuakespasmNX)": "https://github.com/fgsfdsfgs/QuakespasmNX",
- "OpenTTD": "https://github.com/OpenTTD/OpenTTD",
- "ScummVM": "https://github.com/scummvm/scummvm",
- "Sonic 3 A.I.R.": "https://github.com/Eukaryot/sonic3air",
- "RenpyNX Ports": "https://github.com/faithvoid/RenpyNXPorts",
- "OpenMW (Morrowind)": "https://github.com/OpenMW/openmw",
- "Space Cadet Pinball": "https://github.com/k4zmu2a/SpaceCadetPinball",
- "Meritous": "https://www.gamebrew.org/wiki/List_of_Switch_homebrew_games"
- },
- " Читы и коды": {
- "GBAtemp Cheat Archive": "https://gbatemp.net/forums/nintendo-switch-cheat-codes-download.412/",
- "CheatSlips.com": "https://www.cheatslips.com/",
- "SwitchCheatsDB": "https://www.switchcheatsdb.com/",
- "EdiZon Cheat Repository": "https://github.com/WerWolv/EdiZon_CheatsConfigsAndScripts",
- "Switch Cheat DB (GitHub)": "https://github.com/ibnux/switch-cheat",
- "Breeze Cheat Manager": "https://github.com/tomvita/Breeze-Beta",
- "EdiZon гайд": "https://www.cfwaifu.com/edizon-cheats/",
- "NH Switch Cheats Guide": "https://switch.hacks.guide/homebrew/edizon.html"
- },
- " Стриминг и захват": {
- "OBS Studio": "https://obsproject.com",
- "Elgato HD60 X": "https://www.elgato.com/",
- "Elgato Stream Deck": "https://www.elgato.com/stream-deck",
- "Capture Card Setup Guide": "https://www.elgato.com/us/en/explorer/products/capture/",
- "OBS Switch Setup": "https://obsproject.com/forum/tags/nintendo-switch/",
- "Streamlabs OBS": "https://streamlabs.com/",
- "Stream Elements": "https://streamelements.com/",
- "Discord Streaming": "https://discord.com/",
- "Twitch Setup Guide": "https://www.twitch.tv/",
- "YouTube Gaming Setup": "https://gaming.youtube.com/"
- },
- " Популярные проекты": {
- "Atmosphere GitHub": "https://github.com/Atmosphere-NX",
- "Hekate GitHub": "https://github.com/CTCaer",
- "Switch Homebrew GitHub": "https://github.com/switchbrew",
- "RetroArch Team": "https://github.com/libretro",
- "masagrator Projects": "https://github.com/masagrator",
- "WerWolv Projects": "https://github.com/WerWolv",
- "rashevskyv Projects": "https://github.com/rashevskyv",
- "Team Neptune": "https://github.com/Team-Neptune"
- },
- " Расширенные инструменты": {
- "NSC Builder": "https://github.com/julesontheroad/NSC_BUILDER",
- "SAK (Switch Army Knife)": "https://github.com/dezem/SAK",
- "NUT": "https://github.com/blawar/nut",
- "nsz Tools": "https://github.com/nicoboss/nsz",
- "hacBrewPack": "https://github.com/The-4n/hacBrewPack",
- "hactool": "https://github.com/SciresM/hactool",
- "nxdumptool": "https://github.com/DarkMatterCore/nxdumptool"
- },
- " Гайды и туториалы": {
- "4PDA Switch Forum": "https://4pda.to/forum/index.php?showtopic=900987",
- "Reddit r/SwitchHacks": "https://www.reddit.com/r/SwitchHacks/",
- "Reddit r/SwitchHaxing": "https://www.reddit.com/r/SwitchHaxing/",
- "CFWaifu Guides": "https://www.cfwaifu.com/"
- },
- " Полезные сервисы": {
- "tinfoil.io": "https://tinfoil.io/",
- "PKHeX (Pokemon)": "https://projectpokemon.org/home/files/file/1-pkhex/"
- },
- " Разработка Extended": {
- "devkitPro Toolchain": "https://github.com/devkitPro/installer/releases",
- "Homebrew Development": "https://switchbrew.org/wiki/Homebrew_Development"
- },
- " Безопасность Extended": {
- "Incognito RCM": "https://github.com/jimzrt/Incognito_RCM",
- "TegraExplorer Backup": "https://github.com/suchmememanyskill/TegraExplorer"
- },
- " Оптимизация и производительность": {
- "ReverseNX (режимы)": "https://github.com/masagrator/ReverseNX-RT"
- },
- " Кастомизация Extended": {
- "Animated Themes": "https://gbatemp.net/threads/showcase-nintendo-switch-themes-with-animations.647281/"
- },
- " Сеть Extended": {
- "ldn_mitm (LAN play)": "https://github.com/spacemeowx2/ldn_mitm",
- "sys-ftpd (FTP)": "https://github.com/cathery/sys-ftpd",
- "FTPD Pro": "https://github.com/mtheall/ftpd",
- "NTP Sync": "https://github.com/nedex/QuickNTP"
- },
- " Игровые моды Extended": {},
- "YouTube - Видео": {
- "Mig switch распаковка ": "https://www.youtube.com/watch?v=pgeMANPbcqM",
- "Как сделать автозакрытие окна в GoldHEN": "https://www.youtube.com/shorts/7n0HNs-zUp4"
- },
- "Архив - Авто-гайды": {
- "Авто-гайд 0001": "https://duckduckgo.com/?q=%D0%90%D0%B2%D1%82%D0%BE-%D0%B3%D0%B0%D0%B9%D0%B4%200001%20Nintendo%20Switch%20site%3Agithub.com%20OR%20site%3Arentry.org%20OR%20site%3Agithub.io%20OR%20site%3Agamebrew.org%20OR%20site%3Agbatemp.net"
- },
- "YouTube - Chipovshchik": {
- "[2025-10-08] Ошибка атмосферы на новых Nintendo Switch Lite. Решение": "https://www.youtube.com/watch?v=ox9wdkTCPQE",
- "[2025-10-07] Я взломал Switch 2": "https://www.youtube.com/watch?v=nS_q687b2BI",
- "[2025-10-05] Mig switch распаковка": "https://www.youtube.com/watch?v=pgeMANPbcqM",
- "[2025-10-01] Обновление 20.5.0. Можно ли обновлять?": "https://www.youtube.com/watch?v=-yX6JG-Pxk4",
- "[2025-09-30] Как сделать эмунанд всего 7гб": "https://www.youtube.com/watch?v=C5AuY4AaCbM",
- "[2025-09-28] Что не так со switch 2?": "https://www.youtube.com/watch?v=gavsB5NzAQQ",
- "[2025-09-25] Как избежать бана на Nintendo Switch": "https://www.youtube.com/watch?v=Ht7Yf0GVui8",
- "[2025-09-17] Ошибка атмосферы на новых Nintendo switch": "https://www.youtube.com/watch?v=8Hh9j6c-E8A",
- "[2025-09-15] Фишки забаненного switch 2": "https://www.youtube.com/watch?v=uDhTdhvh1vk",
- "[2025-09-13] Что может забаненный switch 2?": "https://www.youtube.com/watch?v=LEYXwcesadY",
- "[2025-09-11] Как настроить Retroarch на Playstation 4": "https://www.youtube.com/watch?v=Pj6wnM7bNck",
- "[2025-09-08] Как сделать автозакрытие окна в GoldHEN": "https://www.youtube.com/shorts/7n0HNs-zUp4",
- "[2025-09-07] Как обновить GoldHEN на прошитой Playstation 4 версия ПО 9.60 12.02": "https://www.youtube.com/watch?v=fNOabyujEfg",
- "[2025-09-03] Как настроить Retroarch на Nintendo switch": "https://www.youtube.com/watch?v=BlrP6c6x9ic"
- },
- " Ryazhenka CFW": {
- "Ryazhenka CFW (главный репозиторий)": "https://github.com/Dimasick-git/Ryzhenka",
- "Ryazhenka Tuner (пресеты производительности)": "https://github.com/Dimasick-git/Ryazhenkabestcfw-Tuner",
- "RyazhaTune (фоновая музыка)": "https://github.com/Dimasick-git/RyazhaTune",
- "RYAZHA AI (умный помощник)": "https://dimasick-git.github.io/RyazhaAI",
- "Telegram канал": "https://t.me/Ryazhenkabestcfw"
- },
- " AI и инструменты": {
- "RYAZHA AI веб-интерфейс": "https://dimasick-git.github.io/RyazhaAI",
- "RYAZHA AI GitHub": "https://github.com/Dimasick-git/RyazhaAI",
- "ChatGPT (онлайн)": "https://chat.openai.com",
- "Claude AI (онлайн)": "https://claude.ai"
- },
- " Мониторинг и статус": {
- "Ryazha Status Monitor (ovl)": "https://github.com/Dimasick-git/Ryazha-Status-Monitor",
- "Ryazha Cheker (мониторинг репо)": "https://github.com/Dimasick-git/Ryazha-cheker",
- "Nintendo Switch Status (ninshop)": "https://www.nintendo.com/en-US/switch/",
- "AtmosphereBot (статус)": "https://github.com/Atmosphere-NX/Atmosphere/releases"
- }
+  " Прошивка и CFW": {
+    " Kefir CFW (русская сборка)": "https://github.com/rashevskyv/kefir/releases",
+    " Kefir Updater (автообновление)": "https://github.com/rashevskyv/kefir-updater",
+    " 4IFIR (оверклокинг)": "https://github.com/rashevskyv/4IFIR",
+    " 4IFIR Releases": "https://github.com/rashevskyv/4IFIR/releases",
+    " Ultra NX (легковесная сборка)": "https://github.com/Ultra-NX/UltraNX/releases",
+    " NX-Venom (all-in-one bundle)": "https://github.com/CatcherITGF/NX-Venom/releases",
+    " Ryazhenka CFW": "https://github.com/Dimasick-git/Ryzhenka/releases",
+    "Atmosphère официальная": "https://github.com/Atmosphere-NX/Atmosphere/releases",
+    "Hekate (загрузчик)": "https://github.com/CTCaer/hekate/releases",
+    "Sigpatches (патчи)": "https://github.com/ITotalJustice/patches/releases",
+    "DeepSea (CFW пакет)": "https://github.com/Team-Neptune/DeepSea/releases",
+    "Ryazhenka": "https://github.com/Dimasick-git/Ryzhenka/releases/tag/v4.0.0",
+    " Ryazhenka BEST CFW v5.0.0 — Ultimate Premium Edition ⭐": "https://github.com/Dimasick-git/Ryzhenka/releases/tag/v5.0.0"
+  },
+  " Battery Fix (калибровка)": {
+    "Battery Desync Fix NX": "https://github.com/CTCaer/battery_desync_fix_nx",
+    "Battery Desync Fix релизы": "https://github.com/CTCaer/battery_desync_fix_nx/releases",
+    "Гайд Nintendo по калибровке": "https://en-americas-support.nintendo.com/app/answers/detail/a_id/27111",
+    "Battery Desync Fix на GameBrew": "https://www.gamebrew.org/wiki/Battery_Desync_Fix_NX_Switch"
+  },
+  " Установка NSP/XCI/NSZ": {
+    "DBI (лучший установщик)": "https://github.com/rashevskyv/dbi/releases",
+    "Tinfoil (сетевой установщик)": "https://tinfoil.io/Download",
+    "Goldleaf": "https://github.com/XorTroll/Goldleaf/releases",
+    "Awoo Installer": "https://github.com/Huntereb/Awoo-Installer/releases",
+    "NS-USBloader (ПК)": "https://github.com/developersu/ns-usbloader/releases",
+    "Quark (для Goldleaf)": "https://github.com/XorTroll/Quark"
+  },
+  " Системные модули": {
+    "sys-con (USB контроллеры)": "https://github.com/cathery/sys-con/releases",
+    "sys-clk (оверклокинг)": "https://github.com/retronx-team/sys-clk",
+    "sys-patch (автопатчинг)": "https://github.com/impeeza/sys-patch",
+    "SaltyNX (инъекция кода)": "https://github.com/masagrator/SaltyNX",
+    "Mission Control (Bluetooth)": "https://github.com/ndeadly/MissionControl",
+    "Emuiibo (эмуляция amiibo)": "https://github.com/XorTroll/emuiibo/releases",
+    "ldn_mitm (локальная сеть)": "https://github.com/spacemeowx2/ldn_mitm/releases",
+    "sys-ftpd (FTP сервер)": "https://github.com/cathery/sys-ftpd/releases",
+    "sys-tune (музыка на фоне)": "https://github.com/HookedBehemoth/sys-tune/releases",
+    "SwitchPresence (Discord RPC)": "https://github.com/Random06457/SwitchPresence",
+    "sys-hidplus (сетевой ввод)": "https://github.com/luvvyamy/sys-hidplus"
+  },
+  " Tesla Overlay": {
+    "Tesla Menu (главное меню)": "https://github.com/WerWolv/Tesla-Menu/releases",
+    "Ultrahand Overlay": "https://github.com/ppkantorski/Ultrahand-Overlay",
+    "Status Monitor Overlay": "https://github.com/masagrator/Status-Monitor-Overlay/releases",
+    "sys-clk Overlay": "https://github.com/Sun-Research-University/sys-clk",
+    "FPSLocker": "https://github.com/masagrator/FPSLocker",
+    "EdiZon Overlay": "https://github.com/proferabg/EdiZon-Overlay/releases",
+    "ovl-sysmodules": "https://github.com/WerWolv/ovl-sysmodules/releases",
+    "QuickNTP (синхронизация времени)": "https://github.com/nedex/QuickNTP/releases",
+    "ReverseNX-RT": "https://github.com/masagrator/ReverseNX-RT/releases",
+    "fastCFWswitch": "https://github.com/Hartie95/fastCFWSwitch/releases",
+    "TriPlayer (аудио плеер)": "https://github.com/tallbl0nde/TriPlayer/releases",
+    "Tesla Overlays список": "https://github.com/n00mkrad/tesla-overlays-list"
+  },
+  " Эмуляторы на Switch": {
+    "RetroArch": "https://github.com/libretro/RetroArch/releases",
+    "melonDS (NDS)": "https://github.com/RSDuck/melonDS/releases",
+    "mGBA (GBA)": "https://github.com/mgba-emu/mgba/releases",
+    "Snes9x (SNES)": "https://github.com/libretro/snes9x/releases",
+    "DeSmuME (DS)": "https://github.com/libretro/desmume/releases",
+    "PPSSPP (PSP)": "https://github.com/hrydgard/ppsspp/releases",
+    "Flycast (Dreamcast)": "https://github.com/flyinghead/flycast/releases",
+    "Mupen64Plus (N64)": "https://github.com/mupen64plus/mupen64plus-core/releases"
+  },
+  " Эмуляторы на ПК": {
+    "Ryujinx (Switch эмулятор)": "https://github.com/Ryujinx/Ryujinx/releases",
+    "Yuzu (архив)": "https://github.com/yuzu-emu/yuzu-mainline/releases",
+    "Dolphin (GameCube/Wii)": "https://dolphin-emu.org/download/",
+    "PCSX2 (PS2)": "https://pcsx2.net/downloads/",
+    "RPCS3 (PS3)": "https://rpcs3.net/download",
+    "Xenia (Xbox 360)": "https://github.com/xenia-project/xenia/releases",
+    "Xemu (Xbox)": "https://github.com/mborgerson/xemu/releases",
+    "Citra (3DS)": "https://github.com/citra-emu/citra/releases"
+  },
+  " EmuMMC / EmuNAND (добавлено)": {
+    "EmuNAND / EmuMMC — Обзор и FAQ": "https://www.gamebrew.org/"
+  },
+  " Homebrew приложения": {
+    "Homebrew App Store": "https://github.com/fortheusers/hb-appstore/releases",
+    "nx-hbmenu": "https://github.com/switchbrew/nx-hbmenu/releases",
+    "AIO Switch Updater": "https://github.com/HamletDuFromage/aio-switch-updater/releases",
+    "NX-Shell (файловый менеджер)": "https://github.com/joel16/NX-Shell/releases",
+    "NX-Activity-Log": "https://github.com/tallbl0nde/NX-Activity-Log/releases",
+    "Linkalho (линковка аккаунтов)": "https://github.com/rdmrocha/linkalho/releases",
+    "Fizeau (цвета экрана)": "https://github.com/averne/Fizeau/releases",
+    "nxmp (медиаплеер)": "https://github.com/proconsule/nxmp/releases",
+    "Homebrew Details": "https://github.com/tallbl0nde/Homebrew-Details/releases",
+    "SimpleModManager": "https://github.com/nadrino/SimpleModManager/releases"
+  },
+  " Сохранения и читы": {
+    "JKSV (save manager)": "https://github.com/J-D-K/JKSV/releases",
+    "Checkpoint": "https://github.com/BernardoGiordano/Checkpoint/releases",
+    "EdiZon (save editor)": "https://github.com/WerWolv/EdiZon/releases",
+    "EdiZon-SE": "https://github.com/tomvita/EdiZon-SE/releases",
+    "Breeze (чит менеджер)": "https://github.com/tomvita/Breeze-Beta/releases",
+    "SaltySD": "https://github.com/masagrator/SaltySD/releases"
+  },
+  " Темы и кастомизация": {
+    "NXThemesInstaller": "https://github.com/exelix11/SwitchThemeInjector/releases",
+    "Themezer (репозиторий тем)": "https://themezer.net/",
+    "Themezer-NX (загрузчик тем)": "https://github.com/suchmememanyskill/themezer-nx/releases",
+    "Theme Patches": "https://github.com/exelix11/theme-patches",
+    "Web Theme Injector": "https://exelix11.github.io/SwitchThemeInjector/",
+    "Layout Editor Docs": "https://layoutdocs.themezer.net/"
+  },
+  " Моддинг игр": {
+    "Switch Mods (GBAtemp)": "https://gbatemp.net/forums/nintendo-switch.283/",
+    "GameBanana Mods": "https://gamebanana.com/games/6713",
+    "ROM Hacks список": "https://www.gamebrew.org/wiki/List_of_Switch_rom_hacks",
+    "Smash Ultimate Mods": "https://gamebanana.com/games/6498",
+    "Breath of the Wild Mods": "https://gamebanana.com/games/5866",
+    "Splatoon 3 Mods": "https://gamebanana.com/games/16545",
+    "Pokemon Mods": "https://gamebanana.com/games/7534",
+    "Mario Kart 8 Deluxe Mods": "https://gamebanana.com/games/5667",
+    "Animal Crossing Mods": "https://gamebanana.com/games/7194",
+    "60 FPS Patches": "https://github.com/masagrator/FPSLocker-Warehouse",
+    "60 FPS Mods (GBAtemp)": "https://gbatemp.net/threads/switch-60-fps-cheat-list.572740/",
+    "Layered FS Mods": "https://github.com/topics/switch-mods",
+    "TOTK Mods": "https://gamebanana.com/mods/games/16626"
+  },
+  " Сеть и безопасность": {
+    "90DNS (блокировка Nintendo)": "https://gitlab.com/a/90dns",
+    "Incognito_RCM (скрытие серийника)": "https://github.com/jimzrt/Incognito_RCM/releases",
+    "Exosphere (защита)": "https://github.com/Atmosphere-NX/Atmosphere",
+    "FTPD Pro": "https://github.com/mtheall/ftpd/releases"
+  },
+  " Разработка": {
+    "libnx (SDK)": "https://github.com/switchbrew/libnx",
+    "devkitPro": "https://github.com/devkitPro",
+    "nxlink": "https://github.com/switchbrew/switch-tools",
+    "SwitchBrew Wiki": "https://switchbrew.org/wiki/Main_Page",
+    "Awesome Switch Homebrew": "https://github.com/FeralAI/awesome-switch-homebrew",
+    "Switch Examples": "https://github.com/switchbrew/switch-examples"
+  },
+  " Плагины и расширения": {
+    "nx-ovlloader": "https://github.com/WerWolv/nx-ovlloader/releases",
+    "libtesla (SDK для overlays)": "https://github.com/WerWolv/libtesla",
+    "CaptureSight (Pokemon viewer)": "https://github.com/zaksabeast/CaptureSight/releases"
+  },
+  " Инструменты для ПК": {
+    "TegraRcmGUI (payload инъектор)": "https://github.com/eliboa/TegraRcmGUI/releases",
+    "Quark (для Goldleaf)": "https://github.com/XorTroll/Quark/releases",
+    "NXDumpTool": "https://github.com/DarkMatterCore/nxdumptool/releases",
+    "Lockpick_RCM (ключи)": "https://github.com/shchmue/Lockpick_RCM/releases",
+    "Haku33 (ключи)": "https://github.com/dezem/Haku33/releases",
+    "NSC_Builder (упаковка NSP)": "https://github.com/julesontheroad/NSC_BUILDER/releases",
+    "Switch Army Knife": "https://github.com/dezem/SAK/releases",
+    "NUT (USB установка)": "https://github.com/blawar/nut/releases"
+  },
+  " Обновление и поддержка": {},
+  "🆚 Сравнение и гайды": {
+    "NH Switch Guide": "https://nh-server.github.io/switch-guide/",
+    "Switch Hacks Guide": "https://switch.hacks.guide/",
+    "Atmosphere Docs": "https://github.com/Atmosphere-NX/Atmosphere/tree/master/docs",
+    "rentry Switch Guide": "https://rentry.org/SwitchHackingIsEasy"
+  },
+  " Payload и загрузка": {
+    "TegraExplorer": "https://github.com/suchmememanyskill/TegraExplorer/releases",
+    "Argon-NX": "https://github.com/Guillem96/argon-nx/releases"
+  },
+  " Модчипы": {
+    "PicoFly firmware": "https://github.com/Ansem-SoD/Picofly/releases",
+    "PicoFly гайд": "https://gbatemp.net/download/a-definitive-picofly-install-guide.37968/",
+    "NH Switch Modchip Guide": "https://guide.nx-modchip.info/",
+    "HWFly-NX firmware": "https://github.com/hwfly-nx/firmware",
+    "Spacecraft-NX": "https://github.com/spacemeowx2/spacecraft-nx",
+    "Modchip Installation Guide": "https://switch.hacks.guide/user_guide/modchip/"
+  },
+  " Android/Mobile": {
+    "Skyline (Switch на Android)": "https://github.com/skyline-emu/skyline",
+    "TegraRcmSmash (Android)": "https://github.com/rajkosto/TegraRcmSmash",
+    "Switch Android Linux": "https://github.com/natinusala/painless-linux"
+  },
+  " Медиа и развлечения": {
+    "pPlay (видеоплеер)": "https://github.com/Cpasjuste/pplay/releases",
+    "SwitchIdent": "https://github.com/joel16/SwitchIdent/releases"
+  },
+  " Системная информация": {
+    "NX-System-Info": "https://github.com/J-D-K/NX-System-Info"
+  },
+  " Обучение и ресурсы": {
+    "devkitPro Wiki": "https://devkitpro.org/wiki/Getting_Started",
+    "libnx Docs": "https://github.com/switchbrew/libnx/wiki"
+  },
+  " Игровые утилиты": {
+    "ACNH-Pattern-Editor": "https://acpatterns.com/editor",
+    "Pokemon PKHeX": "https://github.com/kwsch/PKHeX/releases",
+    "sys-botbase": "https://github.com/olliz0r/sys-botbase/releases",
+    "SysBot.NET": "https://github.com/kwsch/SysBot.NET/releases"
+  },
+  " Готовые сборки CFW": {},
+  " Дополнительные утилиты": {
+    "NX File Manager": "https://github.com/joel16/NX-File-Manager/releases",
+    "NX Game Info": "https://github.com/AcK77/NX_Game_Info/releases",
+    "nx-hbloader": "https://github.com/switchbrew/nx-hbloader",
+    "NX-FTP": "https://github.com/EasyRPG/NX-FTP"
+  },
+  " CFW компоненты": {
+    "Hekate Bootloader": "https://github.com/CTCaer/hekate"
+  },
+  " PC Tools Extended": {
+    "Ryujinx Updater": "https://github.com/Ryujinx/release-channel-master",
+    "NX-Game-Info": "https://github.com/AcK77/NX_Game_Info",
+    "Switch-Backup-Manager": "https://github.com/gibaBR/switch-backup-manager",
+    "NSP Forwarder": "https://github.com/LyfeOnEdge/NSP_Forwarder",
+    "Switch Theme Injector": "https://github.com/exelix11/SwitchThemeInjector"
+  },
+  " Документация": {
+    "SwitchBrew": "https://switchbrew.org/"
+  },
+  " Оверклокинг": {
+    "sys-clk overlay": "https://github.com/Sun-Research-University/sys-clk-Overlay",
+    "NX-Venom (OC bundle)": "https://github.com/CatcherITGF/NX-Venom",
+    "Ultra Tuner": "https://github.com/hanai3Bi/Switch-OC-Suite"
+  },
+  " Диагностика": {
+    "Switch Identify": "https://github.com/joel16/SwitchIdent",
+    "Status Monitor": "https://github.com/masagrator/Status-Monitor-Overlay",
+    "hid-mitm Test": "https://github.com/cathery/hid-mitm"
+  },
+  " Файловые менеджеры": {},
+  " Графика и темы Extended": {
+    "Themezer Packs": "https://themezer.net/packs",
+    "Custom Themes Reddit": "https://www.reddit.com/r/NXThemes/"
+  },
+  " Контроллеры": {
+    "sys-con (USB)": "https://github.com/cathery/sys-con",
+    "JoyCon Toolkit": "https://github.com/CTCaer/jc_toolkit"
+  },
+  " Homebrew игры": {
+    "Fallout 2 CE Switch": "https://github.com/ryandeering/fallout2-ce-switch",
+    "Super Mario 64 (порт)": "https://github.com/sm64-port/sm64-port",
+    "Portal (порт)": "https://github.com/fgsfdsfgs/sm64-port",
+    "Doom (GZDoom)": "https://github.com/drfrag666/gzdoom",
+    "Quake (QuakespasmNX)": "https://github.com/fgsfdsfgs/QuakespasmNX",
+    "OpenTTD": "https://github.com/OpenTTD/OpenTTD",
+    "ScummVM": "https://github.com/scummvm/scummvm",
+    "Sonic 3 A.I.R.": "https://github.com/Eukaryot/sonic3air",
+    "RenpyNX Ports": "https://github.com/faithvoid/RenpyNXPorts",
+    "OpenMW (Morrowind)": "https://github.com/OpenMW/openmw",
+    "Space Cadet Pinball": "https://github.com/k4zmu2a/SpaceCadetPinball",
+    "Meritous": "https://www.gamebrew.org/wiki/List_of_Switch_homebrew_games"
+  },
+  " Читы и коды": {
+    "GBAtemp Cheat Archive": "https://gbatemp.net/forums/nintendo-switch-cheat-codes-download.412/",
+    "CheatSlips.com": "https://www.cheatslips.com/",
+    "SwitchCheatsDB": "https://www.switchcheatsdb.com/",
+    "EdiZon Cheat Repository": "https://github.com/WerWolv/EdiZon_CheatsConfigsAndScripts",
+    "Switch Cheat DB (GitHub)": "https://github.com/ibnux/switch-cheat",
+    "Breeze Cheat Manager": "https://github.com/tomvita/Breeze-Beta",
+    "EdiZon гайд": "https://www.cfwaifu.com/edizon-cheats/",
+    "NH Switch Cheats Guide": "https://switch.hacks.guide/homebrew/edizon.html"
+  },
+  " Стриминг и захват": {
+    "OBS Studio": "https://obsproject.com",
+    "Elgato HD60 X": "https://www.elgato.com/",
+    "Elgato Stream Deck": "https://www.elgato.com/stream-deck",
+    "Capture Card Setup Guide": "https://www.elgato.com/us/en/explorer/products/capture/",
+    "OBS Switch Setup": "https://obsproject.com/forum/tags/nintendo-switch/",
+    "Streamlabs OBS": "https://streamlabs.com/",
+    "Stream Elements": "https://streamelements.com/",
+    "Discord Streaming": "https://discord.com/",
+    "Twitch Setup Guide": "https://www.twitch.tv/",
+    "YouTube Gaming Setup": "https://gaming.youtube.com/"
+  },
+  " Популярные проекты": {
+    "Atmosphere GitHub": "https://github.com/Atmosphere-NX",
+    "Hekate GitHub": "https://github.com/CTCaer",
+    "Switch Homebrew GitHub": "https://github.com/switchbrew",
+    "RetroArch Team": "https://github.com/libretro",
+    "masagrator Projects": "https://github.com/masagrator",
+    "WerWolv Projects": "https://github.com/WerWolv",
+    "rashevskyv Projects": "https://github.com/rashevskyv",
+    "Team Neptune": "https://github.com/Team-Neptune"
+  },
+  " Расширенные инструменты": {
+    "NSC Builder": "https://github.com/julesontheroad/NSC_BUILDER",
+    "SAK (Switch Army Knife)": "https://github.com/dezem/SAK",
+    "NUT": "https://github.com/blawar/nut",
+    "nsz Tools": "https://github.com/nicoboss/nsz",
+    "hacBrewPack": "https://github.com/The-4n/hacBrewPack",
+    "hactool": "https://github.com/SciresM/hactool",
+    "nxdumptool": "https://github.com/DarkMatterCore/nxdumptool"
+  },
+  " Гайды и туториалы": {
+    "4PDA Switch Forum": "https://4pda.to/forum/index.php?showtopic=900987",
+    "Reddit r/SwitchHacks": "https://www.reddit.com/r/SwitchHacks/",
+    "Reddit r/SwitchHaxing": "https://www.reddit.com/r/SwitchHaxing/",
+    "CFWaifu Guides": "https://www.cfwaifu.com/"
+  },
+  " Полезные сервисы": {
+    "tinfoil.io": "https://tinfoil.io/",
+    "PKHeX (Pokemon)": "https://projectpokemon.org/home/files/file/1-pkhex/"
+  },
+  " Разработка Extended": {
+    "devkitPro Toolchain": "https://github.com/devkitPro/installer/releases",
+    "Homebrew Development": "https://switchbrew.org/wiki/Homebrew_Development"
+  },
+  " Безопасность Extended": {
+    "Incognito RCM": "https://github.com/jimzrt/Incognito_RCM",
+    "TegraExplorer Backup": "https://github.com/suchmememanyskill/TegraExplorer"
+  },
+  " Оптимизация и производительность": {
+    "ReverseNX (режимы)": "https://github.com/masagrator/ReverseNX-RT"
+  },
+  " Кастомизация Extended": {
+    "Animated Themes": "https://gbatemp.net/threads/showcase-nintendo-switch-themes-with-animations.647281/"
+  },
+  " Сеть Extended": {
+    "ldn_mitm (LAN play)": "https://github.com/spacemeowx2/ldn_mitm",
+    "sys-ftpd (FTP)": "https://github.com/cathery/sys-ftpd",
+    "FTPD Pro": "https://github.com/mtheall/ftpd",
+    "NTP Sync": "https://github.com/nedex/QuickNTP"
+  },
+  " Игровые моды Extended": {},
+  "YouTube - Видео": {
+    "Mig switch распаковка ": "https://www.youtube.com/watch?v=pgeMANPbcqM",
+    "Как сделать автозакрытие окна в GoldHEN": "https://www.youtube.com/shorts/7n0HNs-zUp4"
+  },
+  "Архив - Авто-гайды": {
+    "Авто-гайд 0001": "https://duckduckgo.com/?q=%D0%90%D0%B2%D1%82%D0%BE-%D0%B3%D0%B0%D0%B9%D0%B4%200001%20Nintendo%20Switch%20site%3Agithub.com%20OR%20site%3Arentry.org%20OR%20site%3Agithub.io%20OR%20site%3Agamebrew.org%20OR%20site%3Agbatemp.net"
+  },
+  "YouTube - Chipovshchik": {
+    "[2025-10-08] Ошибка атмосферы на новых Nintendo Switch Lite. Решение": "https://www.youtube.com/watch?v=ox9wdkTCPQE",
+    "[2025-10-07] Я взломал Switch 2": "https://www.youtube.com/watch?v=nS_q687b2BI",
+    "[2025-10-01] Обновление 20.5.0. Можно ли обновлять?": "https://www.youtube.com/watch?v=-yX6JG-Pxk4",
+    "[2025-09-30] Как сделать эмунанд всего 7гб": "https://www.youtube.com/watch?v=C5AuY4AaCbM",
+    "[2025-09-28] Что не так со switch 2?": "https://www.youtube.com/watch?v=gavsB5NzAQQ",
+    "[2025-09-25] Как избежать бана на Nintendo Switch": "https://www.youtube.com/watch?v=Ht7Yf0GVui8",
+    "[2025-09-17] Ошибка атмосферы на новых Nintendo switch": "https://www.youtube.com/watch?v=8Hh9j6c-E8A",
+    "[2025-09-15] Фишки забаненного switch 2": "https://www.youtube.com/watch?v=uDhTdhvh1vk",
+    "[2025-09-13] Что может забаненный switch 2?": "https://www.youtube.com/watch?v=LEYXwcesadY",
+    "[2025-09-11] Как настроить Retroarch на Playstation 4": "https://www.youtube.com/watch?v=Pj6wnM7bNck",
+    "[2025-09-07] Как обновить GoldHEN на прошитой Playstation 4 версия ПО 9.60 12.02": "https://www.youtube.com/watch?v=fNOabyujEfg",
+    "[2025-09-03] Как настроить Retroarch на Nintendo switch": "https://www.youtube.com/watch?v=BlrP6c6x9ic"
+  },
+  " Ryazhenka CFW": {
+    "Ryazhenka CFW (главный репозиторий)": "https://github.com/Dimasick-git/Ryzhenka",
+    "Ryazhenka Tuner (пресеты производительности)": "https://github.com/Dimasick-git/Ryazhenkabestcfw-Tuner",
+    "RyazhaTune (фоновая музыка)": "https://github.com/Dimasick-git/RyazhaTune",
+    "RYAZHA AI (умный помощник)": "https://dimasick-git.github.io/RyazhaAI",
+    "Telegram канал": "https://t.me/Ryazhenkabestcfw"
+  },
+  " AI и инструменты": {
+    "RYAZHA AI GitHub": "https://github.com/Dimasick-git/RyazhaAI",
+    "ChatGPT (онлайн)": "https://chat.openai.com",
+    "Claude AI (онлайн)": "https://claude.ai"
+  },
+  " Мониторинг и статус": {
+    "Ryazha Status Monitor (ovl)": "https://github.com/Dimasick-git/Ryazha-Status-Monitor",
+    "Ryazha Cheker (мониторинг репо)": "https://github.com/Dimasick-git/Ryazha-cheker",
+    "Nintendo Switch Status (ninshop)": "https://www.nintendo.com/en-US/switch/"
+  }
 }
