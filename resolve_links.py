@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""
-Resolve DuckDuckGo search links in guides.json (category '🆕 Авто-гайды')
-into direct links on allowed domains (github.com, rentry.org, github.io, gamebrew.org, gbatemp.net).
+r"""
+Resolve DuckDuckGo search links in guides.json (category 'Авто-гайды')
+into direct links on allowed domains (github.com, rentry.org, github.io,
+gamebrew.org, gbatemp.net).
 
 Usage (PowerShell):
     .\.venv\Scripts\Activate.ps1
     python .\resolve_links.py
 
-This script uses only the standard library (urllib) and writes back to guides.json.
+Stdlib only (urllib). Writes back to guides.json.
 """
 import json
 import urllib.parse

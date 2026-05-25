@@ -1,5 +1,5 @@
 """
-🧪 Core unit tests for Ryazhenka Bot
+ Core unit tests for Ryazhenka Bot
 Tests key functions without requiring a live Telegram connection.
 """
 import json

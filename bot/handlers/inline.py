@@ -31,7 +31,7 @@ async def inline_guide_search(query: InlineQuery) -> None:
                 id=str(uuid.uuid4()),
                 title=title,
                 input_message_content=InputTextMessageContent(
-                    message_text=f"📖 <b>{escape_html(title)}</b>\n📂 {escape_html(cat)}\n{url}",
+                    message_text=f" <b>{escape_html(title)}</b>\n {escape_html(cat)}\n{url}",
                     parse_mode="HTML",
                 ),
                 description=cat,
@@ -46,7 +46,7 @@ async def inline_guide_search(query: InlineQuery) -> None:
                     id=str(uuid.uuid4()),
                     title=doc["title"],
                     input_message_content=InputTextMessageContent(
-                        message_text=f"📖 <b>{escape_html(doc['title'])}</b>\n📂 {escape_html(doc['category'])}\n{doc['url']}",
+                        message_text=f" <b>{escape_html(doc['title'])}</b>\n {escape_html(doc['category'])}\n{doc['url']}",
                         parse_mode="HTML",
                     ),
                     description=doc["category"],
@@ -57,7 +57,7 @@ async def inline_guide_search(query: InlineQuery) -> None:
                 id=str(uuid.uuid4()),
                 title="Ничего не найдено",
                 input_message_content=InputTextMessageContent(
-                    message_text=f"❌ По запросу <b>{escape_html(search_text)}</b> ничего не найдено.\nПопробуй /guide или /all в боте @Ryazhenkabestcfw",
+                    message_text=f" По запросу <b>{escape_html(search_text)}</b> ничего не найдено.\nПопробуй /guide или /all в боте @Ryazhenkabestcfw",
                     parse_mode="HTML",
                 ),
                 description="Попробуйте другой запрос",

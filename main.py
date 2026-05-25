@@ -88,9 +88,13 @@ async def main() -> None:
                 logging.exception("Background resolver failed")
             await asyncio.sleep(max(600, SYNC_INTERVAL_SECONDS))
 
+    # Health server -- всегда, чтобы Railway 'web' proc привязался к $PORT
+    # и проходил health check (/health). Иначе Railway убивает контейнер.
+    asyncio.create_task(_health_server())
+
+    # Background sync -- только если есть источники для синхронизации.
     if (storage.YT_CHANNELS and any(storage.YT_CHANNELS)) or os.environ.get("GITHUB_REPO"):
         asyncio.create_task(background_sync())
-        asyncio.create_task(_health_server())
 
     asyncio.create_task(background_resolver())
 

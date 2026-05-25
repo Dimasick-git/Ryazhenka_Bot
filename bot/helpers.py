@@ -54,8 +54,8 @@ def make_rating_keyboard(guide_key: str) -> InlineKeyboardMarkup:
     r = storage.GUIDE_RATINGS.get(guide_key, {"up": 0, "down": 0})
     up, down = r.get("up", 0), r.get("down", 0)
     return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text=f"👍 {up}", callback_data=f"rate|up|{guide_key}"),
-        InlineKeyboardButton(text=f"👎 {down}", callback_data=f"rate|down|{guide_key}"),
+        InlineKeyboardButton(text=f" {up}", callback_data=f"rate|up|{guide_key}"),
+        InlineKeyboardButton(text=f" {down}", callback_data=f"rate|down|{guide_key}"),
         InlineKeyboardButton(text="⭐ В избранное", callback_data=f"favadd|{guide_key}"),
     ]])
 

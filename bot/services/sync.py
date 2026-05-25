@@ -64,7 +64,7 @@ async def resolve_auto_guides_links(bot, notify_admins: bool = True) -> None:
             found = await resolve_duckduckgo_first(title)
             if found:
                 if storage.SETTINGS.get("auto_resolve_and_add", True):
-                    target_cat = "🔎 Авто-найденные"
+                    target_cat = " Авто-найденные"
                     added = storage.merge_entries_into_category(target_cat, [(title, found)])
                     try:
                         del storage.GUIDES[cat][title]
@@ -79,7 +79,7 @@ async def resolve_auto_guides_links(bot, notify_admins: bool = True) -> None:
         storage.save_guides()
         logging.info("Resolved %d auto-guides to direct links", len(changed))
         if notify_admins and ADMIN_IDS:
-            msg = "🔎 Найдены прямые ссылки для авто-гайдов:\n"
+            msg = " Найдены прямые ссылки для авто-гайдов:\n"
             for t, u in changed[:10]:
                 msg += f"• {t}: {u}\n"
             for aid in ADMIN_IDS:
@@ -158,7 +158,7 @@ async def sync_sources() -> dict:
             # Filter out entries with invalid URLs
             gh_entries = [(t, u) for t, u in gh_entries if _is_valid_url(u)]
             if gh_entries:
-                summary["github_added"] = storage.merge_entries_into_category("📦 Прошивка и CFW", gh_entries)
+                summary["github_added"] = storage.merge_entries_into_category(" Прошивка и CFW", gh_entries)
         except Exception as e:
             logging.warning("GitHub sync failed: %s", e)
 

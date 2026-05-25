@@ -46,15 +46,15 @@ def _cleanup_dialog_ctx() -> None:
 async def start(message: types.Message) -> None:
     total = sum(len(g) for g in storage.GUIDES.values())
     await message.reply(
-        "🛠️ *Ryazhenka Bot* — инженерный помощник по прошивке Nintendo Switch\n"
+        " *Ryazhenka Bot* — инженерный помощник по прошивке Nintendo Switch\n"
         f"{'─' * 35}\n"
-        f"📚 Загружено гайдов: *{total}* в *{len(storage.GUIDES)}* категориях\n\n"
-        "⚙️ *Основные команды:*\n"
-        "🔍 /guide `<тема>` — найти гайд (fuzzy search)\n"
-        "🧠 /aiguide `<текст>` — умный поиск (BM25 + fuzzy)\n"
-        "📋 /all — все категории\n"
-        "📖 /help — полный список команд\n\n"
-        "📂 *Выберите категорию ниже:*",
+        f" Загружено гайдов: *{total}* в *{len(storage.GUIDES)}* категориях\n\n"
+        " *Основные команды:*\n"
+        " /guide `<тема>` — найти гайд (fuzzy search)\n"
+        " /aiguide `<текст>` — умный поиск (BM25 + fuzzy)\n"
+        " /all — все категории\n"
+        " /help — полный список команд\n\n"
+        " *Выберите категорию ниже:*",
         parse_mode="Markdown",
         reply_markup=create_categories_keyboard(),
     )
@@ -63,14 +63,14 @@ async def start(message: types.Message) -> None:
 @router.message(Command("all"))
 async def show_all(message: types.Message) -> None:
     if not storage.GUIDES:
-        await message.reply("❌ База гайдов пуста 📭")
+        await message.reply(" База гайдов пуста ")
         return
-    text = "📚 *Все категории* 🗂️:\n\n"
+    text = " *Все категории* :\n\n"
     total = 0
     for cat, guides in storage.GUIDES.items():
         total += len(guides)
         text += f"{cat} — {len(guides)} гайдов\n"
-    text += f"\n📝 Всего: {total} гайдов в {len(storage.GUIDES)} категориях\n\n"
+    text += f"\n Всего: {total} гайдов в {len(storage.GUIDES)} категориях\n\n"
     text += "Используйте /guide <название> для поиска или выберите категорию:"
     await safe_send(message, text, reply_markup=create_categories_keyboard())
 
@@ -81,16 +81,16 @@ async def show_all(message: types.Message) -> None:
 async def send_guide(message: types.Message, command: CommandObject) -> None:
     query = (command.args or "").strip()
     if not query:
-        await message.reply("❌ Укажите тему после команды, например: /guide battery")
+        await message.reply(" Укажите тему после команды, например: /guide battery")
         return
     if not storage.GUIDES:
-        await message.reply("❌ База гайдов пуста 📭")
+        await message.reply(" База гайдов пуста ")
         return
 
     results = search_guides(query, top_n=10)
     if not results:
         await message.reply(
-            "❌ Не нашёл гайд ⚠️. Попробуйте:\n"
+            " Не нашёл гайд . Попробуйте:\n"
             "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
             "Или /all для всех категорий."
         )
@@ -103,7 +103,7 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
             "title": best["title"], "url": best["url"], "category": best["category"],
         }
         await message.reply(
-            f"✅ Нашёл гайд в категории *{best['category']}*:\n\n"
+            f" Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
             parse_mode="Markdown",
             reply_markup=make_rating_keyboard(guide_key),
@@ -113,7 +113,7 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
     # suggestions
     suggestions = [(d, sc) for d, sc in results if sc >= 55]
     if suggestions:
-        text = "🤔 Ничего точного, но есть похожие варианты:\n\n"
+        text = " Ничего точного, но есть похожие варианты:\n\n"
         kb = InlineKeyboardMarkup(inline_keyboard=[])
         for doc, _ in suggestions[:10]:
             text += f"*{doc['title']}* — {doc['category']}\n"
@@ -128,7 +128,7 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
         return
 
     await message.reply(
-        "❌ Не нашёл гайд ⚠️. Попробуйте:\n"
+        " Не нашёл гайд . Попробуйте:\n"
         "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
         "Или /all для всех категорий."
     )
@@ -138,10 +138,10 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
 async def handle_aiguide(message: types.Message) -> None:
     query = message.text[len("/aiguide"):].strip()
     if not query:
-        await message.reply("Пожалуйста, напишите запрос для поиска гайда ⌨️.")
+        await message.reply("Пожалуйста, напишите запрос для поиска гайда ⌨.")
         return
     if not storage.GUIDES:
-        await message.reply("❌ База гайдов пуста 📭")
+        await message.reply(" База гайдов пуста ")
         return
     results = search_guides(query, top_n=10)
     if results and results[0][1] >= 75:
@@ -151,12 +151,12 @@ async def handle_aiguide(message: types.Message) -> None:
             "title": best["title"], "url": best["url"], "category": best["category"],
         }
         await message.reply(
-            f"✅ Найден гайд 🎯: {best['title']}\nКатегория: {best['category']}\n{best['url']}",
+            f" Найден гайд : {best['title']}\nКатегория: {best['category']}\n{best['url']}",
             reply_markup=make_rating_keyboard(guide_key),
         )
         return
     if results:
-        text = "🤔 Похоже, ничего точного. Вот похожие варианты:\n\n"
+        text = " Похоже, ничего точного. Вот похожие варианты:\n\n"
         kb = InlineKeyboardMarkup(inline_keyboard=[])
         for doc, sc in results[:10]:
             text += f"{doc['title']} — {doc['category']} (score {round(sc, 1)})\n"
@@ -166,7 +166,7 @@ async def handle_aiguide(message: types.Message) -> None:
                 )])
         await message.reply(text, reply_markup=kb if kb.inline_keyboard else None)
         return
-    await message.reply("❌ Не нашёл подходящих гайдов ⚠️. Попробуйте уточнить запрос.")
+    await message.reply(" Не нашёл подходящих гайдов . Попробуйте уточнить запрос.")
 
 
 @router.message(Command("random"))
@@ -176,13 +176,13 @@ async def random_guide(message: types.Message, command: CommandObject) -> None:
     all_entries = [(t, u, c) for c, g in matching.items() for t, u in g.items() if u]
     if not all_entries:
         await message.reply(
-            "❌ Гайды не найдены."
+            " Гайды не найдены."
             + (" Попробуй /random без аргументов или /all." if query else "")
         )
         return
     title, url, cat = random.choice(all_entries)
     await message.reply(
-        f"🎲 *Случайный гайд*\n\n📂 Категория: {cat}\n📖 [{title}]({url})",
+        f" *Случайный гайд*\n\n Категория: {cat}\n [{title}]({url})",
         parse_mode="Markdown",
         disable_web_page_preview=True,
     )
@@ -197,7 +197,7 @@ async def new_guides(message: types.Message) -> None:
     )[:10]
     if not recent:
         await message.reply(
-            "📅 История добавлений пока пуста.\n"
+            " История добавлений пока пуста.\n"
             "Новые гайды будут отслеживаться — добавляй через /add\\_guide!",
             parse_mode="Markdown",
         )
@@ -214,11 +214,11 @@ async def new_guides(message: types.Message) -> None:
 @router.message(Command("stats"))
 async def guide_stats(message: types.Message) -> None:
     if not storage.GUIDES:
-        await message.reply("❌ База гайдов пуста 📭")
+        await message.reply(" База гайдов пуста ")
         return
     total = sum(len(g) for g in storage.GUIDES.values())
     sorted_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)
-    text = f"📊 *Статистика базы гайдов*\n{'─' * 30}\n📚 Всего: *{total}*\n📂 Категорий: *{len(storage.GUIDES)}*\n\n*Топ категорий:*\n"
+    text = f" *Статистика базы гайдов*\n{'─' * 30}\n Всего: *{total}*\n Категорий: *{len(storage.GUIDES)}*\n\n*Топ категорий:*\n"
     for cat, guides in sorted_cats[:8]:
         bar = "█" * min(len(guides) // max(1, total // 20), 10)
         text += f"  {cat} — {len(guides)} {bar}\n"
@@ -230,11 +230,11 @@ async def guide_stats(message: types.Message) -> None:
 @router.message(Command("top"))
 async def top_categories(message: types.Message) -> None:
     if not storage.GUIDES:
-        await message.reply("❌ База гайдов пуста 📭")
+        await message.reply(" База гайдов пуста ")
         return
     sorted_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:10]
     total = sum(len(g) for g in storage.GUIDES.values())
-    text = f"🏆 *Топ категорий*\n{'─' * 35}\n"
+    text = f" *Топ категорий*\n{'─' * 35}\n"
     for i, (cat, guides) in enumerate(sorted_cats, 1):
         pct = len(guides) * 100 // max(total, 1)
         text += f"{i}. {cat} — {len(guides)} гайдов ({pct}%)\n"
@@ -244,12 +244,12 @@ async def top_categories(message: types.Message) -> None:
 @router.message(Command("recommend"))
 async def recommend_repos(message: types.Message) -> None:
     user = "Dimasick-git"
-    await message.reply(f"🔎 Получаю публичные репозитории 📡 {user}...")
+    await message.reply(f" Получаю публичные репозитории  {user}...")
     repos = await fetch_github_repos(user, limit=20)
     if not repos:
-        await message.reply("❌ Не удалось получить репозитории.")
+        await message.reply(" Не удалось получить репозитории.")
         return
-    text = f"📦 Рекомендуемые репозитории 🛠️ {user}:\n\n"
+    text = f" Рекомендуемые репозитории  {user}:\n\n"
     for name, url, desc in repos[:15]:
         text += f"• [{name}]({url}) — {desc}\n"
     await safe_send(message, text, disable_web_page_preview=True)
@@ -271,7 +271,7 @@ async def favorites_command(message: types.Message, command: CommandObject) -> N
         text = f"⭐ *Ваше избранное* ({len(favs)} гайдов):\n\n"
         for i, fav in enumerate(favs, 1):
             text += f"{i}. [{fav['title']}]({fav['url']}) — _{fav['category']}_\n"
-        text += "\n🗑️ Удалить: `/fav remove <номер>`"
+        text += "\n Удалить: `/fav remove <номер>`"
         await message.reply(text, parse_mode="Markdown", disable_web_page_preview=True)
         return
 
@@ -282,19 +282,19 @@ async def favorites_command(message: types.Message, command: CommandObject) -> N
             return
         found = search_guides(query, top_n=1)
         if not found or found[0][1] < 30:
-            await message.reply(f"❌ Гайд по запросу «{query}» не найден.")
+            await message.reply(f" Гайд по запросу «{query}» не найден.")
             return
         entry = found[0][0]
         url = entry.get("url", "")
         if not url:
-            await message.reply("❌ У этого гайда нет ссылки.")
+            await message.reply(" У этого гайда нет ссылки.")
             return
         favs = storage.USER_FAVORITES.setdefault(user_id, [])
         if any(f["url"] == url for f in favs):
             await message.reply(f"⭐ «{entry['title']}» уже в избранном!")
             return
         if len(favs) >= 50:
-            await message.reply("❌ Максимум 50 гайдов. Удали лишние через /fav remove <номер>.")
+            await message.reply(" Максимум 50 гайдов. Удали лишние через /fav remove <номер>.")
             return
         favs.append({"title": entry["title"], "url": url, "category": entry["category"]})
         storage.save_favorites()
@@ -309,11 +309,11 @@ async def favorites_command(message: types.Message, command: CommandObject) -> N
         idx = int(num_str) - 1
         favs = storage.USER_FAVORITES.get(user_id, [])
         if idx < 0 or idx >= len(favs):
-            await message.reply(f"❌ Нет гайда #{idx + 1} в избранном.")
+            await message.reply(f" Нет гайда #{idx + 1} в избранном.")
             return
         removed = favs.pop(idx)
         storage.save_favorites()
-        await message.reply(f"🗑️ Удалено из избранного: *{removed['title']}*", parse_mode="Markdown")
+        await message.reply(f" Удалено из избранного: *{removed['title']}*", parse_mode="Markdown")
         return
 
     await message.reply(
@@ -327,19 +327,19 @@ async def user_feedback(message: types.Message, command: CommandObject, bot: Bot
     text = (command.args or "").strip()
     if not text:
         await message.reply(
-            "📬 *Предложить гайд администраторам:*\n\n"
+            " *Предложить гайд администраторам:*\n\n"
             "`/feedback <название | ссылка | описание>`",
             parse_mode="Markdown",
         )
         return
     if not ADMIN_IDS:
-        await message.reply("❌ Администраторы не настроены.\nНапиши напрямую: @Ryazhenkabestcfw")
+        await message.reply(" Администраторы не настроены.\nНапиши напрямую: @Ryazhenkabestcfw")
         return
     user = message.from_user
     user_info = f"@{user.username}" if user.username else f"ID {user.id}"
     msg_to_admin = (
-        f"📬 *Предложение гайда*\n{'─' * 30}\n"
-        f"👤 От: {user_info}\n💬 Текст: {text}\n\n"
+        f" *Предложение гайда*\n{'─' * 30}\n"
+        f" От: {user_info}\n Текст: {text}\n\n"
         "_Добавить: /add\\_guide Категория | Название | URL_"
     )
     sent = False
@@ -350,35 +350,35 @@ async def user_feedback(message: types.Message, command: CommandObject, bot: Bot
         except Exception:
             pass
     if sent:
-        await message.reply("✅ Спасибо! Предложение отправлено администраторам.")
+        await message.reply(" Спасибо! Предложение отправлено администраторам.")
     else:
-        await message.reply("❌ Не удалось отправить.\nНапиши напрямую: @Ryazhenkabestcfw")
+        await message.reply(" Не удалось отправить.\nНапиши напрямую: @Ryazhenkabestcfw")
 
 
 @router.message(Command("help"))
 async def help_command(message: types.Message) -> None:
     text = (
-        "📘 *Полный список команд* 📜\n"
+        " *Полный список команд* \n"
         f"{'─' * 35}\n"
-        "📌 *Основные:*\n"
-        "👋 /start — Приветствие и быстрые ссылки\n"
-        "📋 /all — Показать все категории\n"
-        "🔍 /guide `<тема>` — Найти гайд (fuzzy search)\n"
-        "🧠 /aiguide `<текст>` — Умный поиск (BM25 + fuzzy)\n"
-        "🎲 /random `[категория]` — Случайный гайд\n"
+        " *Основные:*\n"
+        " /start — Приветствие и быстрые ссылки\n"
+        " /all — Показать все категории\n"
+        " /guide `<тема>` — Найти гайд (fuzzy search)\n"
+        " /aiguide `<текст>` — Умный поиск (BM25 + fuzzy)\n"
+        " /random `[категория]` — Случайный гайд\n"
         "🆕 /new — Последние добавленные гайды\n"
-        "📊 /stats — Статистика базы гайдов\n"
-        "🏆 /top — Топ категорий\n"
-        "📦 /recommend — Репозитории автора\n\n"
+        " /stats — Статистика базы гайдов\n"
+        " /top — Топ категорий\n"
+        " /recommend — Репозитории автора\n\n"
         "⭐ *Избранное:*\n"
         "/fav — Показать избранное\n"
         "/fav add `<тема>` — Добавить гайд\n"
         "/fav remove `<номер>` — Удалить\n\n"
-        "📬 *Обратная связь:*\n"
+        " *Обратная связь:*\n"
         "/feedback `<текст>` — Предложить новый гайд\n\n"
-        "🔍 *Inline-режим:*\n"
+        " *Inline-режим:*\n"
         "Напиши `@botname запрос` в любом чате!\n\n"
-        "🔐 *Админ-команды:*\n"
+        " *Админ-команды:*\n"
         "/sync, /add\\_guide, /remove\\_guide, /edit\\_guide, /list\\_guides, /admin\\_help\n"
     )
     await message.reply(text, parse_mode="Markdown")
