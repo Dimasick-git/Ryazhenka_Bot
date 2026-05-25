@@ -63,4 +63,4 @@ async def inline_guide_search(query: InlineQuery) -> None:
                 description="Попробуйте другой запрос",
             ))
 
-    await query.answer(results[:20], cache_time=15, is_personal=False)
+    await query.answer(results[:20], cache_time=15, is_personal=True)
