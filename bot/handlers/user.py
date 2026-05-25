@@ -355,6 +355,103 @@ async def user_feedback(message: types.Message, command: CommandObject, bot: Bot
         await message.reply(" Не удалось отправить.\nНапиши напрямую: @Ryazhenkabestcfw")
 
 
+@router.message(Command("category"))
+@router.message(Command("cat"))
+async def category_guides(message: types.Message, command: CommandObject) -> None:
+    query = (command.args or "").strip().lower()
+    if not storage.GUIDES:
+        await message.reply(" База гайдов пуста ")
+        return
+
+    if not query:
+        cats = sorted(storage.GUIDES.keys())
+        text = " *Выберите категорию:*\n\n" + "\n".join(f"• `{c}`" for c in cats)
+        text += "\n\nИспользование: `/category <название>`"
+        await message.reply(text, parse_mode="Markdown")
+        return
+
+    # Fuzzy match category name
+    matched = None
+    for cat in storage.GUIDES:
+        if query in cat.lower() or cat.lower() in query:
+            matched = cat
+            break
+    if not matched:
+        # Try partial prefix match
+        for cat in storage.GUIDES:
+            if cat.lower().startswith(query[:4]):
+                matched = cat
+                break
+    if not matched:
+        cats = sorted(storage.GUIDES.keys())
+        await message.reply(
+            f" Категория «{query}» не найдена.\n\nДоступные:\n" + "\n".join(f"• `{c}`" for c in cats),
+            parse_mode="Markdown",
+        )
+        return
+
+    guides = storage.GUIDES[matched]
+    if not guides:
+        await message.reply(f" Категория *{matched}* пуста.", parse_mode="Markdown")
+        return
+
+    text = f" *{matched}* — {len(guides)} гайдов:\n\n"
+    kb = InlineKeyboardMarkup(inline_keyboard=[])
+    for title, url in list(guides.items())[:20]:
+        if url:
+            text += f"• [{title}]({url})\n"
+            kb.inline_keyboard.append([InlineKeyboardButton(text=title[:50], url=url)])
+        else:
+            text += f"• {title}\n"
+    if len(guides) > 20:
+        text += f"\n_...и ещё {len(guides) - 20} гайдов_"
+    await message.reply(text, parse_mode="Markdown", disable_web_page_preview=True,
+                        reply_markup=kb if kb.inline_keyboard else None)
+
+
+@router.message(Command("trending"))
+async def trending_guides(message: types.Message) -> None:
+    if not storage.GUIDE_RATINGS:
+        await message.reply(" Пока нет оценок. Оценивай гайды кнопками под результатами поиска!")
+        return
+
+    scores: dict = {}
+    meta: dict = {}
+    for key, val in storage.GUIDE_RATINGS.items():
+        if key.startswith("_meta_"):
+            guide_key = key[len("_meta_"):]
+            meta[guide_key] = val
+        elif isinstance(val, dict):
+            up = val.get("up", 0)
+            down = val.get("down", 0)
+            if up + down > 0:
+                scores[key] = up - down
+
+    if not scores:
+        await message.reply(" Пока нет оценок. Оценивай гайды кнопками под результатами поиска!")
+        return
+
+    top = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:10]
+    text = "🔥 *Топ гайдов по оценкам:*\n\n"
+    kb = InlineKeyboardMarkup(inline_keyboard=[])
+    for i, (key, score) in enumerate(top, 1):
+        m = meta.get(key, {})
+        title = m.get("title", key)
+        url = m.get("url", "")
+        cat = m.get("category", "")
+        rating_val = storage.GUIDE_RATINGS.get(key, {})
+        up = rating_val.get("up", 0) if isinstance(rating_val, dict) else 0
+        down = rating_val.get("down", 0) if isinstance(rating_val, dict) else 0
+        score_str = f"👍{up} 👎{down}"
+        if url:
+            text += f"{i}. [{title}]({url}) — _{cat}_ {score_str}\n"
+            kb.inline_keyboard.append([InlineKeyboardButton(text=f"{i}. {title[:45]}", url=url)])
+        else:
+            text += f"{i}. {title} — _{cat}_ {score_str}\n"
+    await message.reply(text, parse_mode="Markdown", disable_web_page_preview=True,
+                        reply_markup=kb if kb.inline_keyboard else None)
+
+
 @router.message(Command("help"))
 async def help_command(message: types.Message) -> None:
     text = (
@@ -369,6 +466,8 @@ async def help_command(message: types.Message) -> None:
         "🆕 /new — Последние добавленные гайды\n"
         " /stats — Статистика базы гайдов\n"
         " /top — Топ категорий\n"
+        " /category `<название>` — Гайды по категории\n"
+        "🔥 /trending — Топ гайдов по оценкам\n"
         " /recommend — Репозитории автора\n\n"
         "⭐ *Избранное:*\n"
         "/fav — Показать избранное\n"
