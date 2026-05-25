@@ -98,19 +98,34 @@ async def main() -> None:
 
     asyncio.create_task(background_resolver())
 
+    # Railway rolling-deploy: новый контейнер стартует ДО того как
+    # старый полностью отключился. Оба полят getUpdates -> Telegram
+    # отвечает "Conflict: terminated by other getUpdates request".
+    # Ждём 15с (Telegram long-poll timeout 25-30с) -- к этому моменту
+    # любой in-flight getUpdates от старого контейнера истечёт по timeout'у,
+    # либо SIGTERM убьёт его.
+    startup_delay = int(os.environ.get("STARTUP_DELAY_SECONDS", "15"))
+    if startup_delay > 0:
+        logging.info("Startup delay: %ds (waiting for any previous container to release getUpdates)", startup_delay)
+        await asyncio.sleep(startup_delay)
+
+    # Webhook cleanup -- если кто-то выставил, polling работать не будет.
     try:
         info = await bot.get_webhook_info()
-        logging.info("Webhook info at startup: %s", info)
-    except Exception as e:
-        logging.warning("Could not fetch webhook info: %s", e)
-
-    try:
+        if info.url:
+            logging.warning("Webhook detected: %s -- will delete to enable polling", info.url)
         await bot.delete_webhook(drop_pending_updates=True)
     except Exception:
-        logging.exception("Failed to delete webhook (may be none)")
+        logging.exception("Failed to clear webhook (may be none)")
 
     logging.info("Starting polling...")
-    await dp.start_polling(bot, skip_updates=True)
+    try:
+        await dp.start_polling(bot, skip_updates=True)
+    finally:
+        # Graceful shutdown -- закрываем aiohttp session чтобы SIGTERM от
+        # Railway не оставил висящий getUpdates на стороне Telegram'а.
+        await bot.session.close()
+        logging.info("Bot session closed cleanly")
 
 
 if __name__ == "__main__":
