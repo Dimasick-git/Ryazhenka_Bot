@@ -97,13 +97,16 @@ jobs:
           print(f' guides.json OK: {len(data)} categories, {total} entries')
           "
 
-      - name:  Validate bot_settings.json
+      - name: Validate bot_settings.json
         run: |
           python -c "
-          import json
-          with open('bot_settings.json', 'r', encoding='utf-8') as f:
-              data = json.load(f)
-          print(f' bot_settings.json OK: {data}')
+          import json, os
+          if not os.path.exists('bot_settings.json'):
+              print('bot_settings.json missing -- will be created at runtime by storage.load_settings()')
+          else:
+              with open('bot_settings.json', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+              print(f'bot_settings.json OK: {data}')
           "
 
   # ─────────────────────────────────────────────
