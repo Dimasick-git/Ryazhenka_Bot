@@ -57,8 +57,22 @@ async def _health_server() -> None:
 async def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+    # ВАЖНО: health server стартует ПЕРВЫМ, до всех валидаций. Если
+    # BOT_TOKEN невалидный -- Railway health check всё равно проходит,
+    # контейнер не убивается, юзер видит понятный ERROR в логах и фиксит
+    # переменную. Иначе deploy крутится по бесконечному loop'у healthcheck
+    # fail -> kill -> restart -> healthcheck fail.
+    asyncio.create_task(_health_server())
+
     if not BOT_TOKEN:
-        raise RuntimeError("BOT_TOKEN is not set. Check your .env or environment variables.")
+        logging.error(
+            "BOT_TOKEN env variable is EMPTY/MISSING. "
+            "Fix: Railway -> service -> Variables -> add BOT_TOKEN with "
+            "token from @BotFather (формат 123456:AAH...)."
+        )
+        # Idle loop: health server отвечает, юзер чинит env, делает Restart.
+        while True:
+            await asyncio.sleep(3600)
 
     bot = Bot(token=BOT_TOKEN)
 
@@ -76,7 +90,10 @@ async def main() -> None:
             "copy fresh -> Railway Variables -> BOT_TOKEN -> Update."
         )
         await bot.session.close()
-        sys.exit(1)
+        # Не sys.exit -- держим health server живым, чтобы Railway не убил
+        # контейнер. Юзер видит ERROR, фиксит token, делает Restart.
+        while True:
+            await asyncio.sleep(3600)
 
     dp = Dispatcher()
     dp.include_router(user_router)
@@ -107,11 +124,8 @@ async def main() -> None:
                 logging.exception("Background resolver failed")
             await asyncio.sleep(max(600, SYNC_INTERVAL_SECONDS))
 
-    # Health server -- всегда, чтобы Railway 'web' proc привязался к $PORT
-    # и проходил health check (/health). Иначе Railway убивает контейнер.
-    asyncio.create_task(_health_server())
-
     # Background sync -- только если есть источники для синхронизации.
+    # Health server уже стартовал в начале main(), не дублируем.
     if (storage.YT_CHANNELS and any(storage.YT_CHANNELS)) or os.environ.get("GITHUB_REPO"):
         asyncio.create_task(background_sync())
 
