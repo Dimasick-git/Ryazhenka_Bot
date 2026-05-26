@@ -1,212 +1,212 @@
-name: Bot CI/CD Pipeline
+name:  Bot CI/CD Pipeline
 
 on:
- push:
- branches: [ "main", "dev" ]
- pull_request:
- branches: [ "main" ]
- workflow_dispatch:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
- contents: read
+  contents: read
 
 env:
- PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.11"
 
 jobs:
- # ─────────────────────────────────────────────
- # 1. Lint & Syntax Check
- # ─────────────────────────────────────────────
- lint:
- name: Lint & Syntax Check
- runs-on: ubuntu-latest
+  # ─────────────────────────────────────────────
+  # 1. Lint & Syntax Check
+  # ─────────────────────────────────────────────
+  lint:
+    name:  Lint & Syntax Check
+    runs-on: ubuntu-latest
 
- steps:
- - name: ⬇ Checkout repository
- uses: actions/checkout@v4
+    steps:
+      - name: ⬇ Checkout repository
+        uses: actions/checkout@v4
 
- - name: Set up Python ${{ env.PYTHON_VERSION }}
- uses: actions/setup-python@v5
- with:
- python-version: ${{ env.PYTHON_VERSION }}
- cache: "pip"
+      - name:  Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
- - name: Install lint dependencies
- run: |
- python -m pip install --upgrade pip
- pip install flake8 pyflakes
+      - name:  Install lint dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pyflakes
 
- - name: Check syntax errors (critical)
- run: |
- flake8 main.py resolve_links.py \
- --count \
- --select=E9,F63,F7,F82 \
- --show-source \
- --statistics
+      - name:  Check syntax errors (critical)
+        run: |
+          flake8 main.py resolve_links.py \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics
 
- - name: Check code style (warnings only)
- run: |
- flake8 main.py resolve_links.py \
- --count \
- --exit-zero \
- --max-complexity=15 \
- --max-line-length=130 \
- --statistics \
- --ignore=E501,W503,W504
+      - name:  Check code style (warnings only)
+        run: |
+          flake8 main.py resolve_links.py \
+            --count \
+            --exit-zero \
+            --max-complexity=15 \
+            --max-line-length=130 \
+            --statistics \
+            --ignore=E501,W503,W504
 
- # ─────────────────────────────────────────────
- # 2. Tests
- # ─────────────────────────────────────────────
- test:
- name: Run Tests
- runs-on: ubuntu-latest
- needs: lint
+  # ─────────────────────────────────────────────
+  # 2. Tests
+  # ─────────────────────────────────────────────
+  test:
+    name:  Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
 
- steps:
- - name: ⬇ Checkout repository
- uses: actions/checkout@v4
+    steps:
+      - name: ⬇ Checkout repository
+        uses: actions/checkout@v4
 
- - name: Set up Python ${{ env.PYTHON_VERSION }}
- uses: actions/setup-python@v5
- with:
- python-version: ${{ env.PYTHON_VERSION }}
- cache: "pip"
+      - name:  Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
- - name: Install dependencies
- run: |
- python -m pip install --upgrade pip
- pip install -r requirements.txt
- pip install pytest pytest-asyncio
+      - name:  Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
 
- - name: Run smoke tests
- env:
- BOT_TOKEN: "0000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
- run: |
- python -m pytest tests/ -v --tb=short --ignore=tests/run_search_tests.py 2>&1 || true
- # Run manual smoke tests as scripts
- python tests/smoke_bm25_test.py 2>&1 || true
+      - name:  Run smoke tests
+        env:
+          BOT_TOKEN: "0000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        run: |
+          python -m pytest tests/ -v --tb=short --ignore=tests/run_search_tests.py 2>&1 || true
+          # Run manual smoke tests as scripts
+          python tests/smoke_bm25_test.py 2>&1 || true
 
- - name: Validate guides.json structure
- run: |
- python -c "
- import json, sys
- with open('guides.json', 'r', encoding='utf-8') as f:
- data = json.load(f)
- assert isinstance(data, dict), 'guides.json must be a dict'
- total = sum(len(v) for v in data.values() if isinstance(v, dict))
- print(f' guides.json OK: {len(data)} categories, {total} entries')
- "
+      - name:  Validate guides.json structure
+        run: |
+          python -c "
+          import json, sys
+          with open('guides.json', 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          assert isinstance(data, dict), 'guides.json must be a dict'
+          total = sum(len(v) for v in data.values() if isinstance(v, dict))
+          print(f' guides.json OK: {len(data)} categories, {total} entries')
+          "
 
- - name: Validate bot_settings.json
- run: |
- python -c "
- import json
- with open('bot_settings.json', 'r', encoding='utf-8') as f:
- data = json.load(f)
- print(f' bot_settings.json OK: {data}')
- "
+      - name:  Validate bot_settings.json
+        run: |
+          python -c "
+          import json
+          with open('bot_settings.json', 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          print(f' bot_settings.json OK: {data}')
+          "
 
- # ─────────────────────────────────────────────
- # 3. Security Scan
- # ─────────────────────────────────────────────
- security:
- name: Security Scan
- runs-on: ubuntu-latest
- needs: lint
+  # ─────────────────────────────────────────────
+  # 3. Security Scan
+  # ─────────────────────────────────────────────
+  security:
+    name:  Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
 
- steps:
- - name: ⬇ Checkout repository
- uses: actions/checkout@v4
+    steps:
+      - name: ⬇ Checkout repository
+        uses: actions/checkout@v4
 
- - name: Set up Python ${{ env.PYTHON_VERSION }}
- uses: actions/setup-python@v5
- with:
- python-version: ${{ env.PYTHON_VERSION }}
+      - name:  Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
- - name: Install bandit
- run: pip install bandit
+      - name:  Install bandit
+        run: pip install bandit
 
- - name: Run bandit security scan
- run: |
- bandit -r main.py resolve_links.py \
- -ll \
- --skip B101,B311 \
- -f txt 2>&1 || true
+      - name:  Run bandit security scan
+        run: |
+          bandit -r main.py resolve_links.py \
+            -ll \
+            --skip B101,B311 \
+            -f txt 2>&1 || true
 
- - name: Check for leaked secrets
- run: |
- python -c "
- import re, sys, os, glob
+      - name:  Check for leaked secrets
+        run: |
+          python -c "
+          import re, sys, os, glob
 
- # Telegram token pattern
- token_re = re.compile(r'\b\d{8,12}:[A-Za-z0-9_-]{35,}\b')
- files_to_check = glob.glob('**/*.py', recursive=True) + \
- glob.glob('**/*.md', recursive=True) + \
- glob.glob('**/*.yml', recursive=True) + \
- glob.glob('**/*.txt', recursive=True)
- found = False
- for path in files_to_check:
- if '.git' in path:
- continue
- try:
- with open(path, 'r', encoding='utf-8', errors='ignore') as f:
- content = f.read()
- matches = token_re.findall(content)
- if matches:
- print(f' Possible token in {path}: {matches[0][:10]}...')
- found = True
- except Exception:
- pass
- if found:
- print(' Possible secrets found! Please review.')
- sys.exit(1)
- else:
- print(' No leaked secrets detected.')
- "
+          # Telegram token pattern
+          token_re = re.compile(r'\b\d{8,12}:[A-Za-z0-9_-]{35,}\b')
+          files_to_check = glob.glob('**/*.py', recursive=True) + \
+                           glob.glob('**/*.md', recursive=True) + \
+                           glob.glob('**/*.yml', recursive=True) + \
+                           glob.glob('**/*.txt', recursive=True)
+          found = False
+          for path in files_to_check:
+              if '.git' in path:
+                  continue
+              try:
+                  with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                      content = f.read()
+                  matches = token_re.findall(content)
+                  if matches:
+                      print(f'  Possible token in {path}: {matches[0][:10]}...')
+                      found = True
+              except Exception:
+                  pass
+          if found:
+              print(' Possible secrets found! Please review.')
+              sys.exit(1)
+          else:
+              print(' No leaked secrets detected.')
+          "
 
- # ─────────────────────────────────────────────
- # 4. Build Summary (on main branch only)
- # ─────────────────────────────────────────────
- summary:
- name: Build Summary
- runs-on: ubuntu-latest
- needs: [lint, test, security]
- if: github.ref == 'refs/heads/main'
+  # ─────────────────────────────────────────────
+  # 4. Build Summary (on main branch only)
+  # ─────────────────────────────────────────────
+  summary:
+    name:  Build Summary
+    runs-on: ubuntu-latest
+    needs: [lint, test, security]
+    if: github.ref == 'refs/heads/main'
 
- steps:
- - name: ⬇ Checkout repository
- uses: actions/checkout@v4
+    steps:
+      - name: ⬇ Checkout repository
+        uses: actions/checkout@v4
 
- - name: Set up Python ${{ env.PYTHON_VERSION }}
- uses: actions/setup-python@v5
- with:
- python-version: ${{ env.PYTHON_VERSION }}
+      - name:  Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
- - name: Print project statistics
- run: |
- python -c "
- import json, os
+      - name:  Print project statistics
+        run: |
+          python -c "
+          import json, os
 
- print('=' * 50)
- print(' Ryazhenka Bot — Build Summary')
- print('=' * 50)
+          print('=' * 50)
+          print(' Ryazhenka Bot — Build Summary')
+          print('=' * 50)
 
- # guides stats
- with open('guides.json', 'r', encoding='utf-8') as f:
- guides = json.load(f)
- total = sum(len(v) for v in guides.values() if isinstance(v, dict))
- print(f' Categories: {len(guides)}')
- print(f' Total guides: {total}')
+          # guides stats
+          with open('guides.json', 'r', encoding='utf-8') as f:
+              guides = json.load(f)
+          total = sum(len(v) for v in guides.values() if isinstance(v, dict))
+          print(f' Categories: {len(guides)}')
+          print(f' Total guides: {total}')
 
- # code stats
- with open('main.py', 'r', encoding='utf-8') as f:
- lines = f.readlines()
- print(f' main.py: {len(lines)} lines')
+          # code stats
+          with open('main.py', 'r', encoding='utf-8') as f:
+              lines = f.readlines()
+          print(f' main.py: {len(lines)} lines')
 
- # requirements
- with open('requirements.txt', 'r', encoding='utf-8') as f:
- deps = [l.strip() for l in f if l.strip() and not l.startswith('#')]
- print(f' Dependencies: {len(deps)}')
- print('=' * 50)
- print(' All checks passed!')
- "
+          # requirements
+          with open('requirements.txt', 'r', encoding='utf-8') as f:
+              deps = [l.strip() for l in f if l.strip() and not l.startswith('#')]
+          print(f' Dependencies: {len(deps)}')
+          print('=' * 50)
+          print(' All checks passed!')
+          "

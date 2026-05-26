@@ -1,89 +1,89 @@
-name: Auto Release
+name:  Auto Release
 
 on:
- push:
- tags:
- - "v*.*.*"
- workflow_dispatch:
- inputs:
- version:
- description: "Version tag (e.g. v1.2.3)"
- required: true
- type: string
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g. v1.2.3)"
+        required: true
+        type: string
 
 permissions:
- contents: write
+  contents: write
 
 jobs:
- create-release:
- name: Create GitHub Release
- runs-on: ubuntu-latest
+  create-release:
+    name:  Create GitHub Release
+    runs-on: ubuntu-latest
 
- steps:
- - name: ⬇ Checkout repository
- uses: actions/checkout@v4
- with:
- fetch-depth: 0
+    steps:
+      - name: ⬇ Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
- - name: Set up Python 3.11
- uses: actions/setup-python@v5
- with:
- python-version: "3.11"
+      - name:  Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
- - name: Generate release notes
- id: notes
- run: |
- python -c "
- import json, subprocess, sys
+      - name:  Generate release notes
+        id: notes
+        run: |
+          python -c "
+          import json, subprocess, sys
 
- # guides stats
- with open('guides.json', 'r', encoding='utf-8') as f:
- guides = json.load(f)
- total = sum(len(v) for v in guides.values() if isinstance(v, dict))
+          # guides stats
+          with open('guides.json', 'r', encoding='utf-8') as f:
+              guides = json.load(f)
+          total = sum(len(v) for v in guides.values() if isinstance(v, dict))
 
- # get recent commits
- try:
- result = subprocess.run(
- ['git', 'log', '--oneline', '-20'],
- capture_output=True, text=True
- )
- commits = result.stdout.strip()
- except Exception:
- commits = 'N/A'
+          # get recent commits
+          try:
+              result = subprocess.run(
+                  ['git', 'log', '--oneline', '-20'],
+                  capture_output=True, text=True
+              )
+              commits = result.stdout.strip()
+          except Exception:
+              commits = 'N/A'
 
- notes = f'''## Ryazhenka Bot Release
+          notes = f'''##  Ryazhenka Bot Release
 
- ### Statistics
- - Categories: {len(guides)}
- - Total guides: {total}
+          ###  Statistics
+          -  Categories: {len(guides)}
+          -  Total guides: {total}
 
- ### Recent Changes
- \`\`\`
- {commits}
- \`\`\`
+          ###  Recent Changes
+          \`\`\`
+          {commits}
+          \`\`\`
 
- ### Technical Stack
- - Python 3.11
- - aiogram 3.x
- - aiohttp
- - BM25 + Fuzzy search engine
+          ###  Technical Stack
+          - Python 3.11
+          - aiogram 3.x
+          - aiohttp
+          - BM25 + Fuzzy search engine
 
- ### Deployment
- Deploy via Railway: \`worker: python main.py\`
- '''
+          ###  Deployment
+          Deploy via Railway: \`worker: python main.py\`
+          '''
 
- with open('RELEASE_NOTES.md', 'w', encoding='utf-8') as f:
- f.write(notes)
- print(' Release notes generated')
- "
+          with open('RELEASE_NOTES.md', 'w', encoding='utf-8') as f:
+              f.write(notes)
+          print(' Release notes generated')
+          "
 
- - name: Create Release
- uses: softprops/action-gh-release@v2
- with:
- body_path: RELEASE_NOTES.md
- files: |
- guides.json
- requirements.txt
- bot_settings.json
- generate_release_notes: true
- make_latest: true
+      - name:  Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE_NOTES.md
+          files: |
+            guides.json
+            requirements.txt
+            bot_settings.json
+          generate_release_notes: true
+          make_latest: true
