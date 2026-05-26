@@ -2,8 +2,10 @@
 import asyncio
 import logging
 import os
+import sys
 
 from aiogram import Bot, Dispatcher
+from aiogram.exceptions import TelegramUnauthorizedError
 from aiohttp import web
 
 from bot import storage
@@ -59,6 +61,23 @@ async def main() -> None:
         raise RuntimeError("BOT_TOKEN is not set. Check your .env or environment variables.")
 
     bot = Bot(token=BOT_TOKEN)
+
+    # Early token validation. Раньше 401 от Telegram прилетал глубоко в
+    # polling loop'е и spam'ил 200-строчный traceback каждый restart.
+    try:
+        me = await bot.get_me()
+        logging.info("Authenticated as @%s (id=%d)", me.username, me.id)
+    except TelegramUnauthorizedError:
+        logging.error(
+            "BOT_TOKEN is REJECTED by Telegram (401 Unauthorized). "
+            "Likely causes: token revoked in BotFather, typo in Railway "
+            "Variables, или extra whitespace при paste'е. "
+            "Fix: BotFather -> /mybots -> bot -> API Token -> Revoke -> "
+            "copy fresh -> Railway Variables -> BOT_TOKEN -> Update."
+        )
+        await bot.session.close()
+        sys.exit(1)
+
     dp = Dispatcher()
     dp.include_router(user_router)
     dp.include_router(admin_router)
