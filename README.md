@@ -100,4 +100,4 @@ pytest -q
 
 ## Лицензия
 
-См. `LICENSE`. Автор: Dimasick-git.
+См. `LICENSE`. Автор: Dimasick-git. Деплоер - Dimanchik-git.
