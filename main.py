@@ -9,7 +9,7 @@ from aiogram.exceptions import TelegramUnauthorizedError
 from aiohttp import web
 
 from bot import storage
-from bot.config import BOT_TOKEN, SYNC_INTERVAL_SECONDS
+from bot.config import ADMIN_IDS, BOT_TOKEN, SYNC_INTERVAL_SECONDS
 from bot.handlers import admin_router, callbacks_router, inline_router, user_router
 from bot.nlp import invalidate_index
 from bot.services.sync import resolve_auto_guides_links, sync_sources
@@ -104,15 +104,32 @@ async def main() -> None:
     total = sum(len(g) for g in storage.GUIDES.values())
     logging.info("Loaded %d categories, %d guides total", len(storage.GUIDES), total)
 
+    async def _notify_admins(text: str) -> None:
+        for aid in ADMIN_IDS:
+            try:
+                await bot.send_message(aid, text)
+            except Exception:
+                pass
+
     async def background_sync() -> None:
         await asyncio.sleep(5)
+        consecutive_failures = 0
         while True:
             try:
                 summary = await sync_sources()
                 invalidate_index()
                 logging.info("Background sync: %s", summary)
-            except Exception:
+                if consecutive_failures > 0:
+                    consecutive_failures = 0
+                    await _notify_admins("✅ Синхронизация восстановлена.")
+            except Exception as e:
+                consecutive_failures += 1
                 logging.exception("Background sync failed")
+                # Уведомляем при первой ошибке и каждые 5 последующих
+                if consecutive_failures == 1 or consecutive_failures % 5 == 0:
+                    await _notify_admins(
+                        f"⚠️ Ошибка фоновой синхронизации (попытка {consecutive_failures}): {e}"
+                    )
             await asyncio.sleep(SYNC_INTERVAL_SECONDS)
 
     async def background_resolver() -> None:
