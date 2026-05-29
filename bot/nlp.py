@@ -286,7 +286,11 @@ def search_guides(query: str, top_n: int = 10) -> list:
                     pass
         if bm_scores:
             bm_norm = min(100.0, bm_scores[idx] / (bm_max + 1e-9) * 100.0)
-            score = max(score, bm_norm)
+            if score >= 30 and bm_norm >= 30:
+                # Weighted blend: fuzzy captures string shape, BM25 captures term relevance
+                score = score * 0.6 + bm_norm * 0.4
+            else:
+                score = max(score, bm_norm)
         results.append(({"title": title, "category": cat, "url": url}, score))
 
     results.sort(key=lambda x: x[1], reverse=True)

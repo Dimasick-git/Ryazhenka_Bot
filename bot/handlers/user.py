@@ -31,6 +31,8 @@ from ..helpers import (
 from ..nlp import invalidate_index, search_guides
 from ..services.github import fetch_github_repos
 
+_GUIDES_PER_CAT_PAGE = 15
+
 router = Router()
 
 # Temporary context for "open" callbacks (1h TTL)
@@ -97,6 +99,8 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
         await message.reply(" База гайдов пуста ")
         return
 
+    storage.add_to_search_history(str(message.from_user.id), query)
+
     results = search_guides(query, top_n=10)
     if not results:
         await message.reply(
@@ -137,10 +141,12 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
         await message.reply(text, parse_mode="Markdown", reply_markup=kb)
         return
 
+    top_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:3]
+    cat_hints = "".join(f"\n• /category `{c}`" for c, _ in top_cats)
     await message.reply(
         " Не нашёл гайд . Попробуйте:\n"
         "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
-        "Или /all для всех категорий."
+        f"Популярные категории:{cat_hints}\n\nИли /all для всех категорий."
     )
 
 
@@ -153,6 +159,7 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
     if not storage.GUIDES:
         await message.reply(" База гайдов пуста ")
         return
+    storage.add_to_search_history(str(message.from_user.id), query)
     results = search_guides(query, top_n=10)
     if results and results[0][1] >= 75:
         best = results[0][0]
@@ -408,16 +415,35 @@ async def category_guides(message: types.Message, command: CommandObject) -> Non
         await message.reply(f" Категория *{matched}* пуста.", parse_mode="Markdown")
         return
 
-    text = f" *{matched}* — {len(guides)} гайдов:\n\n"
-    kb = InlineKeyboardMarkup(inline_keyboard=[])
-    for title, url in list(guides.items())[:20]:
+    # Use paginated inline view via callback
+    from ..helpers import cat_cb as _cat_cb
+    items = list(guides.items())
+    total = len(items)
+    page_size = _GUIDES_PER_CAT_PAGE
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    chunk = items[:page_size]
+
+    text = f" *{matched}*\n"
+    if total_pages > 1:
+        text += f"_Страница 1/{total_pages}_ — всего {total} гайдов\n"
+    text += "\n"
+    for title, url in chunk:
         if url:
             text += f"• [{title}]({url})\n"
-            kb.inline_keyboard.append([InlineKeyboardButton(text=title[:50], url=url)])
         else:
             text += f"• {title}\n"
-    if len(guides) > 20:
-        text += f"\n_...и ещё {len(guides) - 20} гайдов_"
+    if total_pages == 1:
+        text += f"\n Всего: {total} гайдов\n"
+
+    h = _cat_cb(matched)
+    nav_row = []
+    if total_pages > 1:
+        nav_row.append(InlineKeyboardButton(text="Вперёд ▶", callback_data=f"cat|{h}|1"))
+    kb = InlineKeyboardMarkup(inline_keyboard=[])
+    if nav_row:
+        kb.inline_keyboard.append(nav_row)
+    kb.inline_keyboard.append([InlineKeyboardButton(text="⬅ К категориям", callback_data="back_to_categories")])
+
     await message.reply(text, parse_mode="Markdown", disable_web_page_preview=True,
                         reply_markup=kb if kb.inline_keyboard else None)
 
@@ -465,6 +491,24 @@ async def trending_guides(message: types.Message) -> None:
                         reply_markup=kb if kb.inline_keyboard else None)
 
 
+@router.message(Command("history"))
+async def search_history_cmd(message: types.Message) -> None:
+    user_id = str(message.from_user.id)
+    history = storage.SEARCH_HISTORY.get(user_id, [])
+    if not history:
+        await message.reply(
+            " *История поиска пуста.*\n\nИспользуй /guide или /aiguide чтобы искать гайды.",
+            parse_mode="Markdown",
+        )
+        return
+    text = " *Ваши последние запросы:*\n\n"
+    for i, entry in enumerate(reversed(history[-10:]), 1):
+        q = entry.get("query", "")
+        text += f"{i}. `/guide {q}`\n"
+    text += "\nНажмите на запрос чтобы повторить поиск."
+    await message.reply(text, parse_mode="Markdown")
+
+
 @router.message(Command("help"))
 async def help_command(message: types.Message) -> None:
     text = (
@@ -473,14 +517,16 @@ async def help_command(message: types.Message) -> None:
         " *Основные:*\n"
         " /start — Приветствие и быстрые ссылки\n"
         " /all — Показать все категории\n"
-        " /guide `<тема>` — Найти гайд (fuzzy search)\n"
+        " /guide `<тема>` — Найти гайд (fuzzy + BM25)\n"
         " /aiguide `<текст>` — Умный поиск (BM25 + fuzzy)\n"
         " /random `[категория]` — Случайный гайд\n"
         "🆕 /new — Последние добавленные гайды\n"
         " /stats — Статистика базы гайдов\n"
         " /top — Топ категорий\n"
-        " /category `<название>` — Гайды по категории\n"
+        " /category `<название>` — Гайды по категории (с пагинацией)\n"
+        " /cat `<название>` — Псевдоним /category\n"
         "🔥 /trending — Топ гайдов по оценкам\n"
+        " /history — Ваши последние поисковые запросы\n"
         " /recommend — Репозитории автора\n\n"
         "⭐ *Избранное:*\n"
         "/fav — Показать избранное\n"

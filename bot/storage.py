@@ -15,6 +15,7 @@ GUIDES_META_FILE = "guides_meta.json"
 SETTINGS_PATH = "bot_settings.json"
 YT_CHANNELS_FILE = "yt_channels.json"
 YT_CACHE_FILE = "yt_channel_cache.json"
+SEARCH_HISTORY_FILE = "search_history.json"
 
 DEFAULT_SETTINGS = {"auto_resolve_and_add": True, "yt_prune_removed": True, "yt_keep_limit": 50}
 
@@ -26,6 +27,7 @@ GUIDES_META: dict = {}
 SETTINGS: dict = {}
 YT_CHANNELS: list = []
 YT_CACHE: dict = {}
+SEARCH_HISTORY: dict = {}  # user_id -> [{"query": str, "ts": float}, ...]
 
 try:
     YT_PRUNE_REMOVED: bool = os.environ.get("YT_PRUNE_REMOVED", "1") in ("1", "true", "True")
@@ -167,6 +169,31 @@ def save_yt_cache() -> None:
     _atomic_write(YT_CACHE_FILE, YT_CACHE)
 
 
+# ── Search history ────────────────────────────────────────────
+def load_search_history() -> dict:
+    try:
+        if os.path.exists(SEARCH_HISTORY_FILE):
+            with open(SEARCH_HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def save_search_history() -> None:
+    _atomic_write(SEARCH_HISTORY_FILE, SEARCH_HISTORY)
+
+
+def add_to_search_history(user_id: str, query: str) -> None:
+    import time as _time
+    history = SEARCH_HISTORY.setdefault(user_id, [])
+    history[:] = [h for h in history if h.get("query", "").lower() != query.lower()]
+    history.append({"query": query, "ts": _time.time()})
+    if len(history) > 15:
+        history[:] = history[-15:]
+    save_search_history()
+
+
 # ── URL normalization & deduplication ─────────────────────────
 def normalize_url(url: str) -> str:
     if not url:
@@ -273,6 +300,7 @@ def _boot() -> None:
     SETTINGS.update(load_settings())
     YT_CHANNELS[:] = load_yt_channels()
     YT_CACHE.update(load_yt_cache())
+    SEARCH_HISTORY.update(load_search_history())
 
     YT_PRUNE_REMOVED = SETTINGS.get("yt_prune_removed", YT_PRUNE_REMOVED)
     YT_KEEP_LIMIT = SETTINGS.get("yt_keep_limit", YT_KEEP_LIMIT)

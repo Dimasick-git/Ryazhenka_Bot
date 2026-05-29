@@ -1,5 +1,6 @@
 """Callback query handlers: category nav, ratings, favorites."""
 from aiogram import F, Router, types
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from .. import storage
 from ..helpers import cat_cb, create_categories_keyboard, make_rating_keyboard
@@ -7,41 +8,85 @@ from .user import DIALOG_CTX
 
 router = Router()
 
+_PAGE_SIZE = 15
+
+
+def _build_category_page(category: str, page: int) -> tuple[str, InlineKeyboardMarkup]:
+    guides = storage.GUIDES[category]
+    items = list(guides.items())
+    total = len(items)
+    total_pages = max(1, (total + _PAGE_SIZE - 1) // _PAGE_SIZE)
+    page = max(0, min(page, total_pages - 1))
+
+    start = page * _PAGE_SIZE
+    chunk = items[start : start + _PAGE_SIZE]
+
+    text = f" *{category}*\n"
+    if total_pages > 1:
+        text += f"_Страница {page + 1}/{total_pages}_ — всего {total} гайдов\n"
+    text += "\n"
+    for key, url in chunk:
+        if url:
+            text += f"• [{key}]({url})\n"
+        else:
+            text += f"• {key}\n"
+    if total_pages == 1:
+        text += f"\n Всего: {total} гайдов\n"
+
+    nav_row = []
+    h = cat_cb(category)
+    if page > 0:
+        nav_row.append(InlineKeyboardButton(text="◀ Назад", callback_data=f"cat|{h}|{page - 1}"))
+    if page < total_pages - 1:
+        nav_row.append(InlineKeyboardButton(text="Вперёд ▶", callback_data=f"cat|{h}|{page + 1}"))
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[])
+    if nav_row:
+        kb.inline_keyboard.append(nav_row)
+    kb.inline_keyboard.append([InlineKeyboardButton(text="⬅ К категориям", callback_data="back_to_categories")])
+    return text, kb
+
 
 @router.callback_query(F.data.startswith("cat|"))
 async def handle_category(callback_query: types.CallbackQuery) -> None:
-    cat_hash = callback_query.data.split("|", 1)[1]
+    parts = callback_query.data.split("|")
+    cat_hash = parts[1]
+    page = int(parts[2]) if len(parts) >= 3 and parts[2].lstrip("-").isdigit() else 0
+
     category = next((c for c in storage.GUIDES if cat_cb(c) == cat_hash), None)
     if category is None:
         await callback_query.answer(" Категория не найдена")
         return
-    guides = storage.GUIDES[category]
-    text = f" *{category}*\n\n"
-    for key, url in guides.items():
-        text += f" [{key}]({url})\n"
-    text += f"\n Всего: {len(guides)} гайдов\n"
-    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-    kb = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="⬅ Назад ", callback_data="back_to_categories")
-    ]])
+
+    text, kb = _build_category_page(category, page)
     try:
-        await callback_query.message.edit_text(text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb)
+        await callback_query.message.edit_text(
+            text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb
+        )
     except Exception:
-        await callback_query.message.answer(text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb)
+        await callback_query.message.answer(
+            text, parse_mode="Markdown", disable_web_page_preview=True, reply_markup=kb
+        )
     await callback_query.answer()
 
 
 @router.callback_query(F.data == "back_to_categories")
 async def back_to_categories(callback_query: types.CallbackQuery) -> None:
     text = (
-        " Привет! Я инженерный бот-помощник по прошивке Nintendo Switch \n\n"
-        " Команды:\n• /guide <тема> — найти гайд\n• /all — показать все категории\n\n"
-        " Выберите категорию ниже :"
+        " *Ryazhenka Bot* — инженерный помощник по прошивке Nintendo Switch\n\n"
+        " Команды:\n• /guide `<тема>` — найти гайд\n"
+        "• /all — показать все категории\n"
+        "• /help — полный список команд\n\n"
+        " Выберите категорию ниже:"
     )
     try:
-        await callback_query.message.edit_text(text, reply_markup=create_categories_keyboard())
+        await callback_query.message.edit_text(
+            text, parse_mode="Markdown", reply_markup=create_categories_keyboard()
+        )
     except Exception:
-        await callback_query.message.answer(text, reply_markup=create_categories_keyboard())
+        await callback_query.message.answer(
+            text, parse_mode="Markdown", reply_markup=create_categories_keyboard()
+        )
     await callback_query.answer()
 
 
