@@ -8,16 +8,17 @@ import aiohttp
 
 from .. import storage
 
+_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
-async def _fetch_text(url: str, method: str = "get", data: dict = None) -> str:
-    async with aiohttp.ClientSession() as session:
-        if method == "post":
-            async with session.post(url, data=data, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                resp.raise_for_status()
-                return await resp.text()
-        async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+
+async def _do_fetch(session: aiohttp.ClientSession, url: str, method: str = "get", data: dict = None) -> str:
+    if method == "post":
+        async with session.post(url, data=data, timeout=_TIMEOUT) as resp:
             resp.raise_for_status()
             return await resp.text()
+    async with session.get(url, timeout=_TIMEOUT) as resp:
+        resp.raise_for_status()
+        return await resp.text()
 
 
 async def resolve_channel_id(identifier: str) -> str:
@@ -26,10 +27,8 @@ async def resolve_channel_id(identifier: str) -> str:
     identifier = identifier.strip()
     if identifier.startswith("UC"):
         return identifier
-    # cache lookup
     if identifier in storage.YT_CACHE and storage.YT_CACHE[identifier].get("channel_id"):
         return storage.YT_CACHE[identifier]["channel_id"]
-    # URL parsing
     if identifier.startswith("http") or "youtube.com" in identifier:
         try:
             parsed = urllib.parse.urlparse(identifier)
@@ -52,39 +51,37 @@ async def resolve_channel_id(identifier: str) -> str:
         storage.save_yt_cache()
         return cid
 
-    # RSS user feed
-    try:
-        text = await _fetch_text(f"https://www.youtube.com/feeds/videos.xml?user={identifier}")
-        if text and "<entry>" in text:
-            m = re.search(r"<yt:channelId>(UC[0-9A-Za-z_-]+)</yt:channelId>", text)
-            if m:
-                return _cache_and_return(m.group(1))
-    except Exception as e:
-        logging.debug("User RSS lookup failed for %s: %s", identifier, e)
+    async with aiohttp.ClientSession() as session:
+        try:
+            text = await _do_fetch(session, f"https://www.youtube.com/feeds/videos.xml?user={identifier}")
+            if text and "<entry>" in text:
+                m = re.search(r"<yt:channelId>(UC[0-9A-Za-z_-]+)</yt:channelId>", text)
+                if m:
+                    return _cache_and_return(m.group(1))
+        except Exception as e:
+            logging.debug("User RSS lookup failed for %s: %s", identifier, e)
 
-    # HTML channel page
-    try:
-        html = await _fetch_text(f"https://www.youtube.com/{identifier}")
-        for pat in (r'"channelId"\s*:\s*"(UC[0-9A-Za-z_-]+)"', r"/channel/(UC[0-9A-Za-z_-]+)"):
-            m = re.search(pat, html)
-            if m:
-                return _cache_and_return(m.group(1))
-    except Exception as e:
-        logging.debug("HTML lookup failed for %s: %s", identifier, e)
+        try:
+            html = await _do_fetch(session, f"https://www.youtube.com/{identifier}")
+            for pat in (r'"channelId"\s*:\s*"(UC[0-9A-Za-z_-]+)"', r"/channel/(UC[0-9A-Za-z_-]+)"):
+                m = re.search(pat, html)
+                if m:
+                    return _cache_and_return(m.group(1))
+        except Exception as e:
+            logging.debug("HTML lookup failed for %s: %s", identifier, e)
 
-    # DuckDuckGo fallback
-    try:
-        text = await _fetch_text(
-            "https://duckduckgo.com/html/", method="post",
-            data={"q": f"{identifier} site:youtube.com/channel"},
-        )
-        m = re.search(r'href="([^"]*/channel/(UC[0-9A-Za-z_-]+)[^"]*)"', text)
-        if m:
-            mm = re.search(r"/channel/(UC[0-9A-Za-z_-]+)", m.group(1))
-            if mm:
-                return _cache_and_return(mm.group(1))
-    except Exception:
-        pass
+        try:
+            text = await _do_fetch(
+                session, "https://duckduckgo.com/html/", method="post",
+                data={"q": f"{identifier} site:youtube.com/channel"},
+            )
+            m = re.search(r'href="([^"]*/channel/(UC[0-9A-Za-z_-]+)[^"]*)"', text)
+            if m:
+                mm = re.search(r"/channel/(UC[0-9A-Za-z_-]+)", m.group(1))
+                if mm:
+                    return _cache_and_return(mm.group(1))
+        except Exception:
+            pass
 
     return None
 
@@ -94,7 +91,8 @@ async def fetch_youtube_videos(channel_id: str) -> tuple:
         return None, []
     feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
     try:
-        text = await _fetch_text(feed_url)
+        async with aiohttp.ClientSession() as session:
+            text = await _do_fetch(session, feed_url)
         root = ET.fromstring(text)
         ns = "{http://www.w3.org/2005/Atom}"
         ch_title_el = root.find(f"{ns}title")

@@ -7,6 +7,9 @@ import aiohttp
 
 from ..config import GITHUB_TOKEN
 
+_TIMEOUT_30 = aiohttp.ClientTimeout(total=30)
+_TIMEOUT_20 = aiohttp.ClientTimeout(total=20)
+
 
 async def fetch_github_releases(repo: str) -> list:
     if not repo:
@@ -15,7 +18,7 @@ async def fetch_github_releases(repo: str) -> list:
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"https://github.com/{repo}/releases.atom",
-                timeout=aiohttp.ClientTimeout(total=30),
+                timeout=_TIMEOUT_30,
             ) as resp:
                 resp.raise_for_status()
                 text = await resp.text()
@@ -38,29 +41,28 @@ async def fetch_github_releases(repo: str) -> list:
 
 async def fetch_github_repos(user_or_org: str, limit: int = 20) -> list:
     api_url = f"https://api.github.com/users/{user_or_org}/repos?per_page={limit}&type=public&sort=updated"
-    try:
-        headers = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
+    async with aiohttp.ClientSession(headers=headers) as session:
+        try:
+            async with session.get(api_url, timeout=_TIMEOUT_20) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     return [(r.get("name"), r.get("html_url"), r.get("description") or "") for r in data]
-    except Exception as e:
-        logging.debug("GitHub API fetch failed: %s", e)
-    # HTML fallback
-    try:
-        async with aiohttp.ClientSession() as session:
+        except Exception as e:
+            logging.debug("GitHub API fetch failed: %s", e)
+        # HTML fallback using the same session
+        try:
             async with session.get(
                 f"https://github.com/{user_or_org}?tab=repositories",
-                timeout=aiohttp.ClientTimeout(total=20),
+                timeout=_TIMEOUT_20,
             ) as resp:
                 text = await resp.text()
-        repos = []
-        for m in re.finditer(r'itemprop="name codeRepository">\s*<a[^>]+href="/[^/]+/([^\"]+)"', text):
-            name = m.group(1).strip()
-            repos.append((name, f"https://github.com/{user_or_org}/{name}", ""))
-            if len(repos) >= limit:
-                break
-        return repos
-    except Exception:
-        return []
+            repos = []
+            for m in re.finditer(r'itemprop="name codeRepository">\s*<a[^>]+href="/[^/]+/([^\"]+)"', text):
+                name = m.group(1).strip()
+                repos.append((name, f"https://github.com/{user_or_org}/{name}", ""))
+                if len(repos) >= limit:
+                    break
+            return repos
+        except Exception:
+            return []

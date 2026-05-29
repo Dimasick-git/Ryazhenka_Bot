@@ -2,7 +2,5 @@ aiogram==3.28.2
 aiohttp==3.13.5
 python-dotenv==1.2.2
 requests==2.34.2
-# fuzzywuzzy + python-Levenshtein необязательны: bot/nlp.py имеет pure-Python fallback.
-# Если хочешь max-fuzzy-quality в Railway, добавь:
-#   fuzzywuzzy==0.18.0
-#   python-Levenshtein==0.27.1
+rapidfuzz==3.13.0
+python-Levenshtein==0.27.1
