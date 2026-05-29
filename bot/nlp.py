@@ -32,29 +32,26 @@ except Exception:
 
 # ── Fuzzy matching ────────────────────────────────────────────
 try:
-    from fuzzywuzzy import fuzz, process
+    from rapidfuzz import fuzz
     _HAVE_FUZZY = True
 except Exception:
-    from difflib import SequenceMatcher
+    try:
+        from fuzzywuzzy import fuzz  # type: ignore
+        _HAVE_FUZZY = True
+    except Exception:
+        from difflib import SequenceMatcher
 
-    class _SimpleFuzz:
-        @staticmethod
-        def token_set_ratio(a: str, b: str) -> int:
-            return int(SequenceMatcher(None, a, b).ratio() * 100)
+        class _SimpleFuzz:
+            @staticmethod
+            def token_set_ratio(a: str, b: str) -> int:
+                return int(SequenceMatcher(None, a, b).ratio() * 100)
 
-        @staticmethod
-        def partial_ratio(a: str, b: str) -> int:
-            return int(SequenceMatcher(None, a, b).ratio() * 100)
+            @staticmethod
+            def partial_ratio(a: str, b: str) -> int:
+                return int(SequenceMatcher(None, a, b).ratio() * 100)
 
-    fuzz = _SimpleFuzz()  # type: ignore
-    process = None
-    _HAVE_FUZZY = False
-
-try:
-    from rapidfuzz import fuzz as _rf_fuzz
-    _RAPIDFUZZ = _rf_fuzz
-except Exception:
-    _RAPIDFUZZ = None
+        fuzz = _SimpleFuzz()  # type: ignore
+        _HAVE_FUZZY = False
 
 # ── Stopwords & Synonyms ──────────────────────────────────────
 STOP_WORDS = {
@@ -225,7 +222,7 @@ def build_bm25_index() -> dict:
                 for t in set(tokens):
                     df[t] = df.get(t, 0) + 1
     N = len(docs)
-    avg_dl = sum(len(t) for t in doc_tfs) / max(N, 1)
+    avg_dl = sum(sum(t.values()) for t in doc_tfs) / max(N, 1)
     return {"docs": docs, "tfs": doc_tfs, "df": df, "N": N, "avg_dl": avg_dl}
 
 
@@ -233,7 +230,7 @@ def bm25_score(query_terms: list, index: dict, k1: float = 1.5, b: float = 0.75)
     N = index["N"]
     avg_dl = index["avg_dl"]
     scores = []
-    for tf, doc_len in zip(index["tfs"], (len(t) for t in index["tfs"])):
+    for tf, doc_len in zip(index["tfs"], (sum(t.values()) for t in index["tfs"])):
         score = 0.0
         for term in query_terms:
             if term not in tf:
@@ -260,16 +257,14 @@ def search_guides(query: str, top_n: int = 10) -> list:
         q_expanded.extend(generate_variants(t))
     q_terms = q_expanded
 
-    bm_scores = bm25_score(q_terms, BM25_INDEX) if BM25_INDEX["N"] > 0 else None
+    bm_scores = bm25_score(q_terms, BM25_INDEX) if BM25_INDEX["N"] > 0 else []
+    bm_max = max(bm_scores, default=1e-9)
 
-    choices = []
-    for cat, guides in storage.GUIDES.items():
-        for title, url in guides.items():
-            choices.append((title, cat, url))
-
+    # Iterate over the index's own doc list so bm_scores indices always align.
     q_lower = query.lower()
     results = []
-    for idx, (title, cat, url) in enumerate(choices):
+    for idx, doc in enumerate(BM25_INDEX["docs"]):
+        title, cat, url = doc["title"], doc["category"], doc["url"]
         t_lower = title.lower()
         if q_lower in t_lower or t_lower in q_lower:
             score = 95.0
@@ -287,14 +282,9 @@ def search_guides(query: str, top_n: int = 10) -> list:
                     score = max(score, lev_score)
                 except Exception:
                     pass
-        if bm_scores is not None:
-            try:
-                bm = bm_scores[idx]
-                _bm_max = max(bm_scores) if bm_scores else 1e-9
-                bm_norm = min(100.0, bm / (_bm_max + 1e-9) * 100.0)
-                score = max(score, bm_norm)
-            except Exception:
-                pass
+        if bm_scores:
+            bm_norm = min(100.0, bm_scores[idx] / (bm_max + 1e-9) * 100.0)
+            score = max(score, bm_norm)
         results.append(({"title": title, "category": cat, "url": url}, score))
 
     results.sort(key=lambda x: x[1], reverse=True)

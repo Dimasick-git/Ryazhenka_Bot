@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import re
 import sys
 
 from aiogram import Bot, Dispatcher
@@ -20,7 +21,6 @@ async def _health_server() -> None:
         return web.Response(text="ok")
 
     async def handle_yt_latest(request):
-        import re
         try:
             items = [
                 (cat, title, url)
