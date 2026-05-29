@@ -3,10 +3,20 @@ import hashlib
 import random
 import time
 import uuid
+from difflib import SequenceMatcher
 
 from aiogram import Bot, F, Router, types
 from aiogram.filters import Command, CommandObject
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
+
+try:
+    from rapidfuzz import fuzz as _rfuzz
+    def _cat_score(q: str, cat: str) -> float:
+        c = cat.lower()
+        return max(_rfuzz.token_set_ratio(q, c), _rfuzz.partial_ratio(q, c))
+except ImportError:
+    def _cat_score(q: str, cat: str) -> float:
+        return SequenceMatcher(None, q, cat.lower()).ratio() * 100
 
 from .. import storage
 from ..config import ADMIN_IDS
@@ -135,8 +145,8 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
 
 
 @router.message(Command("aiguide"))
-async def handle_aiguide(message: types.Message) -> None:
-    query = message.text[len("/aiguide"):].strip()
+async def handle_aiguide(message: types.Message, command: CommandObject) -> None:
+    query = (command.args or "").strip()
     if not query:
         await message.reply("Пожалуйста, напишите запрос для поиска гайда ⌨.")
         return
@@ -151,21 +161,25 @@ async def handle_aiguide(message: types.Message) -> None:
             "title": best["title"], "url": best["url"], "category": best["category"],
         }
         await message.reply(
-            f" Найден гайд : {best['title']}\nКатегория: {best['category']}\n{best['url']}",
+            f" Нашёл гайд в категории *{best['category']}*:\n\n"
+            f"*{best['title']}*\n{best['url']}",
+            parse_mode="Markdown",
             reply_markup=make_rating_keyboard(guide_key),
         )
         return
     if results:
-        text = " Похоже, ничего точного. Вот похожие варианты:\n\n"
-        kb = InlineKeyboardMarkup(inline_keyboard=[])
-        for doc, sc in results[:10]:
-            text += f"{doc['title']} — {doc['category']} (score {round(sc, 1)})\n"
-            if doc.get("url"):
-                kb.inline_keyboard.append([InlineKeyboardButton(
-                    text=f"Открыть: {doc['title'][:40]}", url=doc["url"],
-                )])
-        await message.reply(text, reply_markup=kb if kb.inline_keyboard else None)
-        return
+        suggestions = [(d, sc) for d, sc in results if sc >= 55]
+        if suggestions:
+            text = " Ничего точного, но есть похожие варианты:\n\n"
+            kb = InlineKeyboardMarkup(inline_keyboard=[])
+            for doc, _ in suggestions[:10]:
+                text += f"*{doc['title']}* — {doc['category']}\n"
+                if doc.get("url"):
+                    kb.inline_keyboard.append([InlineKeyboardButton(
+                        text=f"Открыть: {doc['title'][:40]}", url=doc["url"],
+                    )])
+            await message.reply(text, parse_mode="Markdown", reply_markup=kb if kb.inline_keyboard else None)
+            return
     await message.reply(" Не нашёл подходящих гайдов . Попробуйте уточнить запрос.")
 
 
@@ -370,18 +384,17 @@ async def category_guides(message: types.Message, command: CommandObject) -> Non
         await message.reply(text, parse_mode="Markdown")
         return
 
-    # Fuzzy match category name
+    # Fuzzy match category name using rapidfuzz (or difflib fallback)
+    q = query.lower()
     matched = None
     for cat in storage.GUIDES:
-        if query in cat.lower() or cat.lower() in query:
+        if q in cat.lower() or cat.lower() in q:
             matched = cat
             break
     if not matched:
-        # Try partial prefix match
-        for cat in storage.GUIDES:
-            if cat.lower().startswith(query[:4]):
-                matched = cat
-                break
+        scored = sorted(storage.GUIDES.keys(), key=lambda c: _cat_score(q, c), reverse=True)
+        if scored and _cat_score(q, scored[0]) >= 55:
+            matched = scored[0]
     if not matched:
         cats = sorted(storage.GUIDES.keys())
         await message.reply(
