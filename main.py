@@ -20,6 +20,10 @@ async def _health_server() -> None:
     async def handle_health(request):
         return web.Response(text="ok")
 
+    def _yt_date_key(item: tuple) -> str:
+        m = re.match(r"\[(\d{4}-\d{2}-\d{2})\]", item[1])
+        return m.group(1) if m else "1970-01-01"
+
     async def handle_yt_latest(request):
         try:
             items = [
@@ -28,11 +32,7 @@ async def _health_server() -> None:
                 if cat.startswith("YouTube -")
                 for title, url in entries.items()
             ]
-            items.sort(
-                key=lambda x: re.match(r"\[(\d{4}-\d{2}-\d{2})\]", x[1]).group(1)
-                if re.match(r"\[(\d{4}-\d{2}-\d{2})\]", x[1]) else "1970-01-01",
-                reverse=True,
-            )
+            items.sort(key=_yt_date_key, reverse=True)
             html = "<html><body><h1>Latest YouTube videos</h1><ul>"
             for cat, title, url in items[:100]:
                 html += f"<li><strong>{cat}</strong>: <a href='{url}'>{title}</a></li>"

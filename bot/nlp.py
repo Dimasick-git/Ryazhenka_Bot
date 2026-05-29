@@ -211,6 +211,7 @@ BM25_INDEX: Optional[dict] = None
 def build_bm25_index() -> dict:
     docs = []
     doc_tfs = []
+    doc_lens = []
     df: dict = {}
     for cat, items in storage.GUIDES.items():
         if isinstance(items, dict):
@@ -219,18 +220,19 @@ def build_bm25_index() -> dict:
                 tokens = apply_synonyms(tokenize(title))
                 tf = term_freq(tokens)
                 doc_tfs.append(tf)
+                doc_lens.append(len(tokens))
                 for t in set(tokens):
                     df[t] = df.get(t, 0) + 1
     N = len(docs)
-    avg_dl = sum(sum(t.values()) for t in doc_tfs) / max(N, 1)
-    return {"docs": docs, "tfs": doc_tfs, "df": df, "N": N, "avg_dl": avg_dl}
+    avg_dl = sum(doc_lens) / max(N, 1)
+    return {"docs": docs, "tfs": doc_tfs, "doc_lens": doc_lens, "df": df, "N": N, "avg_dl": avg_dl}
 
 
 def bm25_score(query_terms: list, index: dict, k1: float = 1.5, b: float = 0.75) -> list:
     N = index["N"]
     avg_dl = index["avg_dl"]
     scores = []
-    for tf, doc_len in zip(index["tfs"], (sum(t.values()) for t in index["tfs"])):
+    for tf, doc_len in zip(index["tfs"], index["doc_lens"]):
         score = 0.0
         for term in query_terms:
             if term not in tf:
