@@ -13,7 +13,7 @@ from bot import storage
 from bot.config import ADMIN_IDS, BOT_TOKEN, SYNC_INTERVAL_SECONDS
 from bot.handlers import admin_router, callbacks_router, inline_router, user_router
 from bot.middleware import ThrottlingMiddleware
-from bot.nlp import invalidate_index
+from bot.nlp import invalidate_index, warm_index
 from bot.services.sync import resolve_auto_guides_links, sync_sources
 
 
@@ -105,6 +105,8 @@ async def main() -> None:
 
     total = sum(len(g) for g in storage.GUIDES.values())
     logging.info("Loaded %d categories, %d guides total", len(storage.GUIDES), total)
+    warm_index()
+    logging.info("BM25 index pre-warmed (%d docs)", total)
 
     async def _notify_admins(text: str) -> None:
         for aid in ADMIN_IDS:
