@@ -46,12 +46,59 @@ def _cleanup_dialog_ctx() -> None:
     for k in stale:
         DIALOG_CTX.pop(k, None)
         DIALOG_CTX_TIME.pop(k, None)
-    # Evict oldest entries if still too large
     if len(DIALOG_CTX) > 500:
         oldest = sorted(DIALOG_CTX_TIME.items(), key=lambda x: x[1])[:len(DIALOG_CTX) - 500]
         for k, _ in oldest:
             DIALOG_CTX.pop(k, None)
             DIALOG_CTX_TIME.pop(k, None)
+
+
+async def _search_and_reply(message: types.Message, query: str) -> None:
+    """Shared search + reply logic for /guide and /aiguide."""
+    if not storage.GUIDES:
+        await message.reply(" База гайдов пуста ")
+        return
+    storage.add_to_search_history(str(message.from_user.id), query)
+    results = search_guides(query, top_n=10)
+
+    if results and results[0][1] >= 75:
+        best = results[0][0]
+        guide_key = build_guide_key(best["url"])
+        storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
+            "title": best["title"], "url": best["url"], "category": best["category"],
+        }
+        await message.reply(
+            f" Нашёл гайд в категории *{best['category']}*:\n\n"
+            f"*{best['title']}*\n{best['url']}",
+            parse_mode="Markdown",
+            reply_markup=make_rating_keyboard(guide_key),
+        )
+        return
+
+    suggestions = [(d, sc) for d, sc in results if sc >= 55]
+    if suggestions:
+        text = " Ничего точного, но есть похожие варианты:\n\n"
+        kb = InlineKeyboardMarkup(inline_keyboard=[])
+        for doc, _ in suggestions[:10]:
+            text += f"*{doc['title']}* — {doc['category']}\n"
+            if doc.get("url"):
+                key = hashlib.md5((doc["title"] + doc["url"]).encode()).hexdigest()[:16]
+                DIALOG_CTX[key] = doc
+                DIALOG_CTX_TIME[key] = time.time()
+                kb.inline_keyboard.append([InlineKeyboardButton(
+                    text=f"Открыть: {doc['title'][:40]}", callback_data=f"open|{key}",
+                )])
+        _cleanup_dialog_ctx()
+        await message.reply(text, parse_mode="Markdown", reply_markup=kb if kb.inline_keyboard else None)
+        return
+
+    top_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:3]
+    cat_hints = "".join(f"\n• /category `{c}`" for c, _ in top_cats)
+    await message.reply(
+        " Не нашёл гайд . Попробуйте:\n"
+        "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
+        f"Популярные категории:{cat_hints}\n\nИли /all для всех категорий."
+    )
 
 
 @router.message(Command("start"))
@@ -95,59 +142,7 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
     if not query:
         await message.reply(" Укажите тему после команды, например: /guide battery")
         return
-    if not storage.GUIDES:
-        await message.reply(" База гайдов пуста ")
-        return
-
-    storage.add_to_search_history(str(message.from_user.id), query)
-
-    results = search_guides(query, top_n=10)
-    if not results:
-        await message.reply(
-            " Не нашёл гайд . Попробуйте:\n"
-            "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
-            "Или /all для всех категорий."
-        )
-        return
-
-    best, best_score = results[0]
-    if best_score >= 75:
-        guide_key = build_guide_key(best["url"])
-        storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
-            "title": best["title"], "url": best["url"], "category": best["category"],
-        }
-        await message.reply(
-            f" Нашёл гайд в категории *{best['category']}*:\n\n"
-            f"*{best['title']}*\n{best['url']}",
-            parse_mode="Markdown",
-            reply_markup=make_rating_keyboard(guide_key),
-        )
-        return
-
-    # suggestions
-    suggestions = [(d, sc) for d, sc in results if sc >= 55]
-    if suggestions:
-        text = " Ничего точного, но есть похожие варианты:\n\n"
-        kb = InlineKeyboardMarkup(inline_keyboard=[])
-        for doc, _ in suggestions[:10]:
-            text += f"*{doc['title']}* — {doc['category']}\n"
-            key = hashlib.md5(doc["title"].encode()).hexdigest()[:16]
-            kb.inline_keyboard.append([InlineKeyboardButton(
-                text=f"Открыть: {doc['title'][:40]}", callback_data=f"open|{key}",
-            )])
-            DIALOG_CTX[key] = doc
-            DIALOG_CTX_TIME[key] = time.time()
-        _cleanup_dialog_ctx()
-        await message.reply(text, parse_mode="Markdown", reply_markup=kb)
-        return
-
-    top_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:3]
-    cat_hints = "".join(f"\n• /category `{c}`" for c, _ in top_cats)
-    await message.reply(
-        " Не нашёл гайд . Попробуйте:\n"
-        "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
-        f"Популярные категории:{cat_hints}\n\nИли /all для всех категорий."
-    )
+    await _search_and_reply(message, query)
 
 
 @router.message(Command("aiguide"))
@@ -156,38 +151,7 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
     if not query:
         await message.reply("Пожалуйста, напишите запрос для поиска гайда ⌨.")
         return
-    if not storage.GUIDES:
-        await message.reply(" База гайдов пуста ")
-        return
-    storage.add_to_search_history(str(message.from_user.id), query)
-    results = search_guides(query, top_n=10)
-    if results and results[0][1] >= 75:
-        best = results[0][0]
-        guide_key = build_guide_key(best["url"])
-        storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
-            "title": best["title"], "url": best["url"], "category": best["category"],
-        }
-        await message.reply(
-            f" Нашёл гайд в категории *{best['category']}*:\n\n"
-            f"*{best['title']}*\n{best['url']}",
-            parse_mode="Markdown",
-            reply_markup=make_rating_keyboard(guide_key),
-        )
-        return
-    if results:
-        suggestions = [(d, sc) for d, sc in results if sc >= 55]
-        if suggestions:
-            text = " Ничего точного, но есть похожие варианты:\n\n"
-            kb = InlineKeyboardMarkup(inline_keyboard=[])
-            for doc, _ in suggestions[:10]:
-                text += f"*{doc['title']}* — {doc['category']}\n"
-                if doc.get("url"):
-                    kb.inline_keyboard.append([InlineKeyboardButton(
-                        text=f"Открыть: {doc['title'][:40]}", url=doc["url"],
-                    )])
-            await message.reply(text, parse_mode="Markdown", reply_markup=kb if kb.inline_keyboard else None)
-            return
-    await message.reply(" Не нашёл подходящих гайдов . Попробуйте уточнить запрос.")
+    await _search_and_reply(message, query)
 
 
 @router.message(Command("random"))
@@ -374,7 +338,6 @@ async def user_feedback(message: types.Message, command: CommandObject, bot: Bot
         return
     user = message.from_user
     user_info = f"@{user.username}" if user.username else f"ID {user.id}"
-    # Экранируем пользовательский ввод перед вставкой в сообщение админу
     safe_text = text.replace("*", "\\*").replace("_", "\\_").replace("`", "\\`").replace("[", "\\[")
     msg_to_admin = (
         f" *Предложение гайда*\n{'─' * 30}\n"
@@ -409,7 +372,6 @@ async def category_guides(message: types.Message, command: CommandObject) -> Non
         await message.reply(text, parse_mode="Markdown")
         return
 
-    # Fuzzy match category name using rapidfuzz (or difflib fallback)
     q = query.lower()
     matched = None
     for cat in storage.GUIDES:
@@ -433,8 +395,6 @@ async def category_guides(message: types.Message, command: CommandObject) -> Non
         await message.reply(f" Категория *{matched}* пуста.", parse_mode="Markdown")
         return
 
-    # Use paginated inline view via callback
-    from ..helpers import cat_cb as _cat_cb
     items = list(guides.items())
     total = len(items)
     page_size = _GUIDES_PER_CAT_PAGE
@@ -453,7 +413,7 @@ async def category_guides(message: types.Message, command: CommandObject) -> Non
     if total_pages == 1:
         text += f"\n Всего: {total} гайдов\n"
 
-    h = _cat_cb(matched)
+    h = cat_cb(matched)
     nav_row = []
     if total_pages > 1:
         nav_row.append(InlineKeyboardButton(text="Вперёд ▶", callback_data=f"cat|{h}|1"))
