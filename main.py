@@ -7,11 +7,13 @@ import sys
 
 from aiogram import Bot, Dispatcher
 from aiogram.exceptions import TelegramUnauthorizedError
+from aiogram.types import BotCommand
 from aiohttp import web
 
 from bot import storage
 from bot.config import ADMIN_IDS, BOT_TOKEN, SYNC_INTERVAL_SECONDS
 from bot.handlers import admin_router, callbacks_router, inline_router, user_router
+from bot.handlers.user import _cleanup_dialog_ctx
 from bot.middleware import ThrottlingMiddleware
 from bot.nlp import invalidate_index, warm_index
 from bot.services.sync import resolve_auto_guides_links, sync_sources
@@ -82,6 +84,22 @@ async def main() -> None:
     try:
         me = await bot.get_me()
         logging.info("Authenticated as @%s (id=%d)", me.username, me.id)
+        await bot.set_my_commands([
+            BotCommand(command="guide",     description="Найти гайд (fuzzy + BM25)"),
+            BotCommand(command="aiguide",   description="Умный поиск (BM25 + fuzzy)"),
+            BotCommand(command="all",       description="Все категории"),
+            BotCommand(command="random",    description="Случайный гайд"),
+            BotCommand(command="new",       description="Последние добавленные гайды"),
+            BotCommand(command="stats",     description="Статистика базы гайдов"),
+            BotCommand(command="top",       description="Топ категорий"),
+            BotCommand(command="trending",  description="Топ гайдов по оценкам"),
+            BotCommand(command="history",   description="История поиска"),
+            BotCommand(command="recommend", description="Репозитории автора"),
+            BotCommand(command="fav",       description="Избранное"),
+            BotCommand(command="feedback",  description="Предложить гайд"),
+            BotCommand(command="help",      description="Список всех команд"),
+        ])
+        logging.info("Bot commands registered with Telegram")
     except TelegramUnauthorizedError:
         logging.error(
             "BOT_TOKEN is REJECTED by Telegram (401 Unauthorized). "
@@ -97,7 +115,9 @@ async def main() -> None:
             await asyncio.sleep(3600)
 
     dp = Dispatcher()
-    dp.message.middleware(ThrottlingMiddleware())
+    throttle = ThrottlingMiddleware()
+    dp.message.middleware(throttle)
+    dp.inline_query.middleware(throttle)
     dp.include_router(user_router)
     dp.include_router(admin_router)
     dp.include_router(callbacks_router)
@@ -151,6 +171,16 @@ async def main() -> None:
         asyncio.create_task(background_sync())
 
     asyncio.create_task(background_resolver())
+
+    async def background_ctx_cleanup() -> None:
+        while True:
+            await asyncio.sleep(600)
+            try:
+                _cleanup_dialog_ctx()
+            except Exception:
+                logging.exception("DIALOG_CTX cleanup failed")
+
+    asyncio.create_task(background_ctx_cleanup())
 
     # Railway rolling-deploy: новый контейнер стартует ДО того как
     # старый полностью отключился. Оба полят getUpdates -> Telegram

@@ -67,6 +67,7 @@ async def _search_and_reply(message: types.Message, query: str) -> None:
         storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
             "title": best["title"], "url": best["url"], "category": best["category"],
         }
+        storage.save_ratings()
         await message.reply(
             f" Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
@@ -157,6 +158,7 @@ async def _perform_search(message: types.Message, query: str) -> None:
         storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
             "title": best["title"], "url": best["url"], "category": best["category"],
         }
+        storage.save_ratings()
         await message.reply(
             f" Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",

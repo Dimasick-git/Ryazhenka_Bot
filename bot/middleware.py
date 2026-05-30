@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
-from aiogram.types import Message
+from aiogram.types import InlineQuery, Message
 
 # Per-user cooldown buckets: command -> (window_seconds, max_calls)
 _LIMITS: Dict[str, tuple] = {
@@ -41,15 +41,32 @@ def _maybe_cleanup(now: float) -> None:
             del _COOLDOWNS[uid]
 
 
+_MAX_USERS = 10_000
+
+
 class ThrottlingMiddleware(BaseMiddleware):
-    """Drops repeated commands if the user exceeds the rate limit."""
+    """Drops repeated commands/inline queries if the user exceeds the rate limit."""
 
     async def __call__(
         self,
-        handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
-        event: Message,
+        handler: Callable[[Any, Dict[str, Any]], Awaitable[Any]],
+        event: Any,
         data: Dict[str, Any],
     ) -> Any:
+        if isinstance(event, InlineQuery):
+            user_id = str(event.from_user.id) if event.from_user else "anon"
+            window, max_calls = _get_bucket("search")
+            now = time.monotonic()
+            _maybe_cleanup(now)
+            if len(_COOLDOWNS) >= _MAX_USERS and user_id not in _COOLDOWNS:
+                return None
+            bucket = _COOLDOWNS[user_id]["inline"]
+            _COOLDOWNS[user_id]["inline"] = [t for t in bucket if now - t < window]
+            if len(_COOLDOWNS[user_id]["inline"]) >= max_calls:
+                return None
+            _COOLDOWNS[user_id]["inline"].append(now)
+            return await handler(event, data)
+
         if not isinstance(event, Message) or not event.text:
             return await handler(event, data)
 
@@ -64,8 +81,10 @@ class ThrottlingMiddleware(BaseMiddleware):
         now = time.monotonic()
         _maybe_cleanup(now)
 
+        if len(_COOLDOWNS) >= _MAX_USERS and user_id not in _COOLDOWNS:
+            return await handler(event, data)
+
         timestamps = _COOLDOWNS[user_id][command]
-        # Evict stale timestamps outside the window
         _COOLDOWNS[user_id][command] = [t for t in timestamps if now - t < window]
 
         if len(_COOLDOWNS[user_id][command]) >= max_calls:

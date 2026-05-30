@@ -71,7 +71,7 @@ def backup_guides() -> None:
     import datetime, shutil
     try:
         if os.path.exists(GUIDES_FILE):
-            dst = f"guides.json.bak.{datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}"
+            dst = f"guides.json.bak.{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
             shutil.copyfile(GUIDES_FILE, dst)
             logging.info("Backed up guides.json to %s", dst)
     except Exception:
