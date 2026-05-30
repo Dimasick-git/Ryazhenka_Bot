@@ -1,5 +1,6 @@
 """Admin command handlers."""
 import datetime
+import functools
 import logging
 import os
 
@@ -22,7 +23,6 @@ def _is_admin(user_id: int) -> bool:
 
 
 def _require_admin(handler):
-    import functools
     @functools.wraps(handler)
     async def wrapper(message: types.Message, *args, **kwargs):
         if not _is_admin(message.from_user.id):
