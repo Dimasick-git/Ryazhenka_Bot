@@ -117,7 +117,7 @@ async def handle_rating(callback_query: types.CallbackQuery) -> None:
         return
     _, direction, guide_key = parts
     user_id = str(callback_query.from_user.id)
-    voted_key = f"_voted_{user_id}_{guide_key}"
+    voted_key = f"_voted_{user_id}|{guide_key}"
     if storage.GUIDE_RATINGS.get(voted_key):
         await callback_query.answer("Вы уже оценили этот гайд!")
         return

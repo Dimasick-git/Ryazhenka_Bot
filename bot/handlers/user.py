@@ -134,6 +134,68 @@ async def show_all(message: types.Message) -> None:
     await safe_send(message, text, reply_markup=create_categories_keyboard())
 
 
+async def _perform_search(message: types.Message, query: str) -> None:
+    """Shared search logic for /guide and /aiguide."""
+    if not storage.GUIDES:
+        await message.reply(" База гайдов пуста ")
+        return
+
+    storage.add_to_search_history(str(message.from_user.id), query)
+    results = search_guides(query, top_n=10)
+
+    if not results:
+        await message.reply(
+            " Не нашёл гайд . Попробуйте:\n"
+            "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
+            "Или /all для всех категорий."
+        )
+        return
+
+    best, best_score = results[0]
+    if best_score >= 75:
+        guide_key = build_guide_key(best["url"])
+        storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
+            "title": best["title"], "url": best["url"], "category": best["category"],
+        }
+        await message.reply(
+            f" Нашёл гайд в категории *{best['category']}*:\n\n"
+            f"*{best['title']}*\n{best['url']}",
+            parse_mode="Markdown",
+            reply_markup=make_rating_keyboard(guide_key),
+        )
+        return
+
+    suggestions = [(d, sc) for d, sc in results if sc >= 55]
+    if suggestions:
+        text = " Ничего точного, но есть похожие варианты:\n\n"
+        kb = InlineKeyboardMarkup(inline_keyboard=[])
+        now = time.time()
+        for doc, _ in suggestions[:10]:
+            text += f"*{doc['title']}* — {doc['category']}\n"
+            key = hashlib.md5(doc["title"].encode()).hexdigest()[:16]
+            if doc.get("url"):
+                kb.inline_keyboard.append([InlineKeyboardButton(
+                    text=f"Открыть: {doc['title'][:40]}", url=doc["url"],
+                )])
+            else:
+                kb.inline_keyboard.append([InlineKeyboardButton(
+                    text=f"Открыть: {doc['title'][:40]}", callback_data=f"open|{key}",
+                )])
+            DIALOG_CTX[key] = doc
+            DIALOG_CTX_TIME[key] = now
+        _cleanup_dialog_ctx()
+        await message.reply(text, parse_mode="Markdown", reply_markup=kb if kb.inline_keyboard else None)
+        return
+
+    top_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:3]
+    cat_hints = "".join(f"\n• /category `{c}`" for c, _ in top_cats)
+    await message.reply(
+        " Не нашёл гайд . Попробуйте:\n"
+        "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
+        f"Популярные категории:{cat_hints}\n\nИли /all для всех категорий."
+    )
+
+
 @router.message(Command("guide"))
 @router.message(Command("гайд"))
 @router.message(Command("search"))
@@ -142,7 +204,7 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
     if not query:
         await message.reply(" Укажите тему после команды, например: /guide battery")
         return
-    await _search_and_reply(message, query)
+    await _perform_search(message, query)
 
 
 @router.message(Command("aiguide"))
@@ -151,7 +213,7 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
     if not query:
         await message.reply("Пожалуйста, напишите запрос для поиска гайда ⌨.")
         return
-    await _search_and_reply(message, query)
+    await _perform_search(message, query)
 
 
 @router.message(Command("random"))

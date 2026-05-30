@@ -18,10 +18,27 @@ _LIMITS: Dict[str, tuple] = {
 }
 
 _COOLDOWNS: Dict[str, Dict[str, list]] = defaultdict(lambda: defaultdict(list))
+_LAST_CLEANUP: float = 0.0
+_CLEANUP_INTERVAL: float = 3600.0  # purge stale user entries hourly
 
 
 def _get_bucket(command: str) -> tuple:
     return _LIMITS.get(command, _LIMITS["default"])
+
+
+def _maybe_cleanup(now: float) -> None:
+    global _LAST_CLEANUP
+    if now - _LAST_CLEANUP < _CLEANUP_INTERVAL:
+        return
+    _LAST_CLEANUP = now
+    max_window = max(w for w, _ in _LIMITS.values())
+    for uid in list(_COOLDOWNS.keys()):
+        for cmd in list(_COOLDOWNS[uid].keys()):
+            _COOLDOWNS[uid][cmd] = [t for t in _COOLDOWNS[uid][cmd] if now - t < max_window]
+            if not _COOLDOWNS[uid][cmd]:
+                del _COOLDOWNS[uid][cmd]
+        if not _COOLDOWNS[uid]:
+            del _COOLDOWNS[uid]
 
 
 class ThrottlingMiddleware(BaseMiddleware):
@@ -45,6 +62,8 @@ class ThrottlingMiddleware(BaseMiddleware):
         window, max_calls = _get_bucket(command)
 
         now = time.monotonic()
+        _maybe_cleanup(now)
+
         timestamps = _COOLDOWNS[user_id][command]
         # Evict stale timestamps outside the window
         _COOLDOWNS[user_id][command] = [t for t in timestamps if now - t < window]

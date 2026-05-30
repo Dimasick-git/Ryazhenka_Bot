@@ -300,3 +300,10 @@ def search_guides(query: str, top_n: int = 10) -> list:
 def invalidate_index() -> None:
     global BM25_INDEX
     BM25_INDEX = None
+
+
+def warm_index() -> None:
+    """Pre-build the BM25 index at startup so the first user query is fast."""
+    global BM25_INDEX
+    if BM25_INDEX is None:
+        BM25_INDEX = build_bm25_index()
