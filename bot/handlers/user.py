@@ -19,7 +19,7 @@ except ImportError:
         return SequenceMatcher(None, q, cat.lower()).ratio() * 100
 
 from .. import storage
-from ..config import ADMIN_IDS
+from ..config import ADMIN_IDS, GITHUB_REPO
 from ..helpers import (
     build_guide_key,
     cat_cb,
@@ -262,9 +262,16 @@ async def top_categories(message: types.Message) -> None:
     await message.reply(text, parse_mode="Markdown", reply_markup=create_categories_keyboard())
 
 
+def _recommend_user() -> str:
+    """Определяет GitHub пользователя из GITHUB_REPO или fallback."""
+    if GITHUB_REPO and "/" in GITHUB_REPO:
+        return GITHUB_REPO.split("/")[0]
+    return "Dimasick-git"
+
+
 @router.message(Command("recommend"))
 async def recommend_repos(message: types.Message) -> None:
-    user = "Dimasick-git"
+    user = _recommend_user()
     await message.reply(f" Получаю публичные репозитории  {user}...")
     repos = await fetch_github_repos(user, limit=20)
     if not repos:
@@ -343,6 +350,9 @@ async def favorites_command(message: types.Message, command: CommandObject) -> N
     )
 
 
+_FEEDBACK_MAX_LEN = 800
+
+
 @router.message(Command("feedback"))
 async def user_feedback(message: types.Message, command: CommandObject, bot: Bot) -> None:
     text = (command.args or "").strip()
@@ -353,14 +363,22 @@ async def user_feedback(message: types.Message, command: CommandObject, bot: Bot
             parse_mode="Markdown",
         )
         return
+    if len(text) > _FEEDBACK_MAX_LEN:
+        await message.reply(
+            f" Сообщение слишком длинное ({len(text)} симв.).\n"
+            f"Максимум {_FEEDBACK_MAX_LEN} символов."
+        )
+        return
     if not ADMIN_IDS:
         await message.reply(" Администраторы не настроены.\nНапиши напрямую: @Ryazhenkabestcfw")
         return
     user = message.from_user
     user_info = f"@{user.username}" if user.username else f"ID {user.id}"
+    # Экранируем пользовательский ввод перед вставкой в сообщение админу
+    safe_text = text.replace("*", "\\*").replace("_", "\\_").replace("`", "\\`").replace("[", "\\[")
     msg_to_admin = (
         f" *Предложение гайда*\n{'─' * 30}\n"
-        f" От: {user_info}\n Текст: {text}\n\n"
+        f" От: {user_info}\n Текст: {safe_text}\n\n"
         "_Добавить: /add\\_guide Категория | Название | URL_"
     )
     sent = False

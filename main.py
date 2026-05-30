@@ -12,6 +12,7 @@ from aiohttp import web
 from bot import storage
 from bot.config import ADMIN_IDS, BOT_TOKEN, SYNC_INTERVAL_SECONDS
 from bot.handlers import admin_router, callbacks_router, inline_router, user_router
+from bot.middleware import ThrottlingMiddleware
 from bot.nlp import invalidate_index
 from bot.services.sync import resolve_auto_guides_links, sync_sources
 
@@ -96,6 +97,7 @@ async def main() -> None:
             await asyncio.sleep(3600)
 
     dp = Dispatcher()
+    dp.message.middleware(ThrottlingMiddleware())
     dp.include_router(user_router)
     dp.include_router(admin_router)
     dp.include_router(callbacks_router)
