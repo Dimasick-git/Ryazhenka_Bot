@@ -21,14 +21,6 @@ def escape_html(text: str) -> str:
     )
 
 
-def _escape_markdown_v2(text: str) -> str:
-    if not text:
-        return text
-    for ch in "_ * [ ] ( ) ~ ` > # + - = | { } . !".split():
-        text = text.replace(ch, f"\\{ch}")
-    return text
-
-
 async def safe_send(target, text: str, reply_markup=None, disable_web_page_preview: bool = False) -> None:
     try:
         await target.reply(
