@@ -56,54 +56,6 @@ def _cleanup_dialog_ctx() -> None:
             DIALOG_CTX_TIME.pop(k, None)
 
 
-async def _search_and_reply(message: types.Message, query: str) -> None:
-    """Shared search + reply logic for /guide and /aiguide."""
-    if not storage.GUIDES:
-        await message.reply(" База гайдов пуста ")
-        return
-    storage.add_to_search_history(str(message.from_user.id), query)
-    results = search_guides(query, top_n=10)
-
-    if results and results[0][1] >= 75:
-        best = results[0][0]
-        guide_key = build_guide_key(best["url"])
-        storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
-            "title": best["title"], "url": best["url"], "category": best["category"],
-        }
-        storage.save_ratings()
-        await message.reply(
-            f" Нашёл гайд в категории *{best['category']}*:\n\n"
-            f"*{best['title']}*\n{best['url']}",
-            parse_mode="Markdown",
-            reply_markup=make_rating_keyboard(guide_key),
-        )
-        return
-
-    suggestions = [(d, sc) for d, sc in results if sc >= 55]
-    if suggestions:
-        text = " Ничего точного, но есть похожие варианты:\n\n"
-        kb = InlineKeyboardMarkup(inline_keyboard=[])
-        for doc, _ in suggestions[:10]:
-            text += f"*{doc['title']}* — {doc['category']}\n"
-            if doc.get("url"):
-                key = hashlib.md5((doc["title"] + doc["url"]).encode()).hexdigest()[:16]
-                DIALOG_CTX[key] = doc
-                DIALOG_CTX_TIME[key] = time.time()
-                kb.inline_keyboard.append([InlineKeyboardButton(
-                    text=f"Открыть: {doc['title'][:40]}", callback_data=f"open|{key}",
-                )])
-        _cleanup_dialog_ctx()
-        await message.reply(text, parse_mode="Markdown", reply_markup=kb if kb.inline_keyboard else None)
-        return
-
-    top_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:3]
-    cat_hints = "".join(f"\n• /category `{c}`" for c, _ in top_cats)
-    await message.reply(
-        " Не нашёл гайд . Попробуйте:\n"
-        "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
-        f"Популярные категории:{cat_hints}\n\nИли /all для всех категорий."
-    )
-
 
 @router.message(Command("start"))
 async def start(message: types.Message) -> None:
@@ -177,17 +129,19 @@ async def _perform_search(message: types.Message, query: str) -> None:
         now = time.time()
         for doc, _ in suggestions[:10]:
             text += f"*{doc['title']}* — {doc['category']}\n"
-            key = hashlib.md5(doc["title"].encode()).hexdigest()[:16]
             if doc.get("url"):
+                # Прямая ссылка — никакой контекст не нужен
                 kb.inline_keyboard.append([InlineKeyboardButton(
                     text=f"Открыть: {doc['title'][:40]}", url=doc["url"],
                 )])
             else:
+                # Нет URL — используем callback + DIALOG_CTX
+                key = hashlib.md5(doc["title"].encode()).hexdigest()[:16]
+                DIALOG_CTX[key] = doc
+                DIALOG_CTX_TIME[key] = now
                 kb.inline_keyboard.append([InlineKeyboardButton(
                     text=f"Открыть: {doc['title'][:40]}", callback_data=f"open|{key}",
                 )])
-            DIALOG_CTX[key] = doc
-            DIALOG_CTX_TIME[key] = now
         _cleanup_dialog_ctx()
         await message.reply(text, parse_mode="Markdown", reply_markup=kb if kb.inline_keyboard else None)
         return
