@@ -46,9 +46,12 @@ def _cleanup_dialog_ctx() -> None:
     for k in stale:
         DIALOG_CTX.pop(k, None)
         DIALOG_CTX_TIME.pop(k, None)
-    if len(DIALOG_CTX) > 500:
-        oldest = sorted(DIALOG_CTX_TIME.items(), key=lambda x: x[1])[:len(DIALOG_CTX) - 500]
-        for k, _ in oldest:
+    overflow = len(DIALOG_CTX) - 500
+    if overflow > 0:
+        # Single O(n) pass: find the `overflow` oldest entries without full sort
+        import heapq
+        oldest_keys = heapq.nsmallest(overflow, DIALOG_CTX_TIME, key=DIALOG_CTX_TIME.__getitem__)
+        for k in oldest_keys:
             DIALOG_CTX.pop(k, None)
             DIALOG_CTX_TIME.pop(k, None)
 
