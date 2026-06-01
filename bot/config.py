@@ -22,3 +22,7 @@ except Exception:
     SYNC_INTERVAL_SECONDS = 3600
 
 ALLOWED_DOMAINS = ["github.com", "rentry.org", "github.io", "gamebrew.org", "gbatemp.net"]
+
+ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
+# Model used for AI answers (override via env var to switch tiers)
+AI_MODEL: str = os.environ.get("AI_MODEL", "claude-haiku-4-5-20251001")

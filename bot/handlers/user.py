@@ -29,6 +29,7 @@ from ..helpers import (
     safe_send,
 )
 from ..nlp import invalidate_index, search_guides
+from ..services.ai import ask_ai
 from ..services.github import fetch_github_repos
 
 _GUIDES_PER_CAT_PAGE = 15
@@ -170,9 +171,107 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
 async def handle_aiguide(message: types.Message, command: CommandObject) -> None:
     query = (command.args or "").strip()
     if not query:
-        await message.reply("Пожалуйста, напишите запрос для поиска гайда ⌨.")
+        await message.reply(
+            " Введи вопрос, например:\n"
+            "`/aiguide как настроить emuNAND`\n"
+            "`/aiguide установка игр atmosphere`",
+            parse_mode="Markdown",
+        )
         return
+
+    storage.add_to_search_history(str(message.from_user.id), query)
+    results = search_guides(query, top_n=5)
+
+    # Build guide context for AI from top local results
+    guide_context = ""
+    if results:
+        lines = []
+        for doc, score in results[:3]:
+            if score >= 30:
+                lines.append(f"• {doc['title']} ({doc['category']}): {doc.get('url', '')}")
+        guide_context = "\n".join(lines)
+
+    # Use AI when local search has no confident match
+    best_score = results[0][1] if results else 0
+    if best_score >= 75:
+        # High-confidence local hit — show it directly (fast path)
+        best = results[0][0]
+        guide_key = build_guide_key(best["url"])
+        storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
+            "title": best["title"], "url": best["url"], "category": best["category"],
+        }
+        storage.save_ratings()
+        await message.reply(
+            f" Нашёл гайд в категории *{best['category']}*:\n\n"
+            f"*{best['title']}*\n{best['url']}",
+            parse_mode="Markdown",
+            reply_markup=make_rating_keyboard(guide_key),
+        )
+        return
+
+    # Try AI for uncertain or missing results
+    thinking_msg = await message.reply(" Думаю...")
+    import asyncio
+    loop = asyncio.get_event_loop()
+    ai_answer = await loop.run_in_executor(None, ask_ai, query, guide_context)
+
+    if ai_answer:
+        reply_text = f" *AI-ответ по запросу:* _{query}_\n\n{ai_answer}"
+        if guide_context:
+            reply_text += "\n\n Связанные гайды в базе:"
+            for doc, score in results[:3]:
+                if score >= 30 and doc.get("url"):
+                    reply_text += f"\n• [{doc['title']}]({doc['url']})"
+        await thinking_msg.edit_text(reply_text, parse_mode="Markdown", disable_web_page_preview=True)
+        return
+
+    # Fallback to local suggestions or not-found message
+    await thinking_msg.delete()
     await _perform_search(message, query)
+
+
+@router.message(Command("ask"))
+async def ask_command(message: types.Message, command: CommandObject) -> None:
+    """Free-form AI question about Nintendo Switch CFW."""
+    query = (command.args or "").strip()
+    if not query:
+        await message.reply(
+            " *Задай вопрос AI по Nintendo Switch CFW:*\n\n"
+            "`/ask как сделать backup NAND?`\n"
+            "`/ask в чём разница emuNAND и sysNAND?`\n"
+            "`/ask как установить игру через Tinfoil?`",
+            parse_mode="Markdown",
+        )
+        return
+
+    thinking_msg = await message.reply(" Думаю...")
+    import asyncio
+
+    # Enrich context with local search results
+    results = search_guides(query, top_n=3)
+    guide_context = ""
+    if results:
+        lines = [f"• {d['title']} ({d['category']}): {d.get('url', '')}" for d, sc in results if sc >= 25]
+        guide_context = "\n".join(lines)
+
+    loop = asyncio.get_event_loop()
+    ai_answer = await loop.run_in_executor(None, ask_ai, query, guide_context)
+
+    if ai_answer:
+        reply_text = f" *Ответ AI:*\n\n{ai_answer}"
+        if guide_context:
+            reply_text += "\n\n Связанные гайды:"
+            for doc, score in results[:3]:
+                if score >= 25 and doc.get("url"):
+                    reply_text += f"\n• [{doc['title']}]({doc['url']})"
+        await thinking_msg.edit_text(reply_text, parse_mode="Markdown", disable_web_page_preview=True)
+    else:
+        await thinking_msg.edit_text(
+            " AI недоступен. Попробуй:\n"
+            "• /guide — поиск по базе гайдов\n"
+            "• /all — все категории\n"
+            "• /feedback — предложи добавить гайд"
+        )
 
 
 @router.message(Command("random"))
@@ -517,7 +616,8 @@ async def help_command(message: types.Message) -> None:
         " /start — Приветствие и быстрые ссылки\n"
         " /all — Показать все категории\n"
         " /guide `<тема>` — Найти гайд (fuzzy + BM25)\n"
-        " /aiguide `<текст>` — Умный поиск (BM25 + fuzzy)\n"
+        " /aiguide `<текст>` — Умный поиск + AI если гайд не найден\n"
+        " /ask `<вопрос>` — Задать вопрос AI по Switch CFW\n"
         " /random `[категория]` — Случайный гайд\n"
         "🆕 /new — Последние добавленные гайды\n"
         " /stats — Статистика базы гайдов\n"

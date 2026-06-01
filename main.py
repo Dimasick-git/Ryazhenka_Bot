@@ -86,7 +86,8 @@ async def main() -> None:
         logging.info("Authenticated as @%s (id=%d)", me.username, me.id)
         await bot.set_my_commands([
             BotCommand(command="guide",     description="Найти гайд (fuzzy + BM25)"),
-            BotCommand(command="aiguide",   description="Умный поиск (BM25 + fuzzy)"),
+            BotCommand(command="aiguide",   description="Умный поиск + AI если гайд не найден"),
+            BotCommand(command="ask",       description="Задать вопрос AI по Switch CFW"),
             BotCommand(command="all",       description="Все категории"),
             BotCommand(command="random",    description="Случайный гайд"),
             BotCommand(command="new",       description="Последние добавленные гайды"),
