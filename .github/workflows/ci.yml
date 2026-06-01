@@ -38,7 +38,7 @@ jobs:
 
       - name:  Check syntax errors (critical)
         run: |
-          flake8 main.py resolve_links.py \
+          flake8 main.py resolve_links.py bot/ \
             --count \
             --select=E9,F63,F7,F82 \
             --show-source \
@@ -46,7 +46,7 @@ jobs:
 
       - name:  Check code style (warnings only)
         run: |
-          flake8 main.py resolve_links.py \
+          flake8 main.py resolve_links.py bot/ \
             --count \
             --exit-zero \
             --max-complexity=15 \
@@ -77,6 +77,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-asyncio
+
+      - name:  Prepare test environment
+        run: |
+          python -c "
+          import json, os
+          settings_path = 'bot_settings.json'
+          defaults = {'auto_resolve_and_add': True, 'yt_prune_removed': True, 'yt_keep_limit': 50}
+          if not os.path.exists(settings_path):
+              with open(settings_path, 'w', encoding='utf-8') as f:
+                  json.dump(defaults, f, ensure_ascii=False, indent=2)
+              print('Created bot_settings.json with defaults')
+          else:
+              print('bot_settings.json already exists')
+          "
 
       - name:  Run smoke tests
         env:
