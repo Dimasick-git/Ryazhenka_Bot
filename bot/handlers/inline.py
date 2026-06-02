@@ -1,4 +1,5 @@
 """Inline query handler."""
+import asyncio
 import random
 import uuid
 
@@ -38,7 +39,7 @@ async def inline_guide_search(query: InlineQuery) -> None:
                 url=url,
             ))
     else:
-        found = search_guides(search_text, top_n=20)
+        found = await asyncio.to_thread(search_guides, search_text, 20)
         matched = [(d, sc) for d, sc in found if sc >= 45]
         if matched:
             for doc, _ in matched:

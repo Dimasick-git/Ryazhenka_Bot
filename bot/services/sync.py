@@ -76,7 +76,7 @@ async def resolve_auto_guides_links(bot, notify_admins: bool = True) -> None:
                     storage.GUIDES[cat][title] = found
                     changed.append((title, found))
     if changed:
-        storage.save_guides()
+        await storage.save_guides()
         logging.info("Resolved %d auto-guides to direct links", len(changed))
         if notify_admins and ADMIN_IDS:
             msg = " Найдены прямые ссылки для авто-гайдов:\n"
@@ -114,7 +114,7 @@ async def sync_sources() -> dict:
                         try:
                             idx = storage.YT_CHANNELS.index(ch)
                             storage.YT_CHANNELS[idx] = cid
-                            storage.save_yt_channels()
+                            await storage.save_yt_channels()
                         except ValueError:
                             pass
                     safe_name = re.sub(r"[^0-9a-zA-Zа-яёА-ЯЁ _\-]", " ", channel_title or ch or cid or "Видео").strip()
@@ -162,5 +162,5 @@ async def sync_sources() -> dict:
         except Exception as e:
             logging.warning("GitHub sync failed: %s", e)
 
-        storage.save_guides()
+        await storage.save_guides()
         return summary
