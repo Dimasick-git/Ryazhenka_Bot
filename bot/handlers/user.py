@@ -98,8 +98,8 @@ async def _perform_search(message: types.Message, query: str) -> None:
         await message.reply(" База гайдов пуста ")
         return
 
-    storage.add_to_search_history(str(message.from_user.id), query)
-    results = search_guides(query, top_n=10)
+    await storage.add_to_search_history(str(message.from_user.id), query)
+    results = await asyncio.to_thread(search_guides, query, 10)
 
     if not results:
         await message.reply(
@@ -115,7 +115,7 @@ async def _perform_search(message: types.Message, query: str) -> None:
         storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
             "title": best["title"], "url": best["url"], "category": best["category"],
         }
-        storage.save_ratings()
+        await storage.save_ratings()
         await message.reply(
             f" Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
@@ -180,8 +180,8 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
         )
         return
 
-    storage.add_to_search_history(str(message.from_user.id), query)
-    results = search_guides(query, top_n=5)
+    await storage.add_to_search_history(str(message.from_user.id), query)
+    results = await asyncio.to_thread(search_guides, query, 5)
 
     # Build guide context for AI from top local results
     guide_context = ""
@@ -201,7 +201,7 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
         storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
             "title": best["title"], "url": best["url"], "category": best["category"],
         }
-        storage.save_ratings()
+        await storage.save_ratings()
         await message.reply(
             f" Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
@@ -246,7 +246,7 @@ async def ask_command(message: types.Message, command: CommandObject) -> None:
     thinking_msg = await message.reply(" Думаю...")
 
     # Enrich context with local search results
-    results = search_guides(query, top_n=3)
+    results = await asyncio.to_thread(search_guides, query, 3)
     guide_context = ""
     if results:
         lines = [f"• {d['title']} ({d['category']}): {d.get('url', '')}" for d, sc in results if sc >= 25]
@@ -389,7 +389,7 @@ async def favorites_command(message: types.Message, command: CommandObject) -> N
         if not query:
             await message.reply("Укажи тему: `/fav add <тема>`", parse_mode="Markdown")
             return
-        found = search_guides(query, top_n=1)
+        found = await asyncio.to_thread(search_guides, query, 1)
         if not found or found[0][1] < 30:
             await message.reply(f" Гайд по запросу «{query}» не найден.")
             return
@@ -406,7 +406,7 @@ async def favorites_command(message: types.Message, command: CommandObject) -> N
             await message.reply(" Максимум 50 гайдов. Удали лишние через /fav remove <номер>.")
             return
         favs.append({"title": entry["title"], "url": url, "category": entry["category"]})
-        storage.save_favorites()
+        await storage.save_favorites()
         await message.reply(f"⭐ Добавлено в избранное: *{entry['title']}*", parse_mode="Markdown")
         return
 
@@ -421,7 +421,7 @@ async def favorites_command(message: types.Message, command: CommandObject) -> N
             await message.reply(f" Нет гайда #{idx + 1} в избранном.")
             return
         removed = favs.pop(idx)
-        storage.save_favorites()
+        await storage.save_favorites()
         await message.reply(f" Удалено из избранного: *{removed['title']}*", parse_mode="Markdown")
         return
 

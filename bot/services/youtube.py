@@ -46,9 +46,9 @@ async def resolve_channel_id(identifier: str) -> str:
     if identifier.startswith("@"):
         identifier = identifier[1:]
 
-    def _cache_and_return(cid: str) -> str:
+    async def _cache_and_return(cid: str) -> str:
         storage.YT_CACHE[identifier] = {"channel_id": cid}
-        storage.save_yt_cache()
+        await storage.save_yt_cache()
         return cid
 
     async with aiohttp.ClientSession() as session:
@@ -57,7 +57,7 @@ async def resolve_channel_id(identifier: str) -> str:
             if text and "<entry>" in text:
                 m = re.search(r"<yt:channelId>(UC[0-9A-Za-z_-]+)</yt:channelId>", text)
                 if m:
-                    return _cache_and_return(m.group(1))
+                    return await _cache_and_return(m.group(1))
         except Exception as e:
             logging.debug("User RSS lookup failed for %s: %s", identifier, e)
 
@@ -66,7 +66,7 @@ async def resolve_channel_id(identifier: str) -> str:
             for pat in (r'"channelId"\s*:\s*"(UC[0-9A-Za-z_-]+)"', r"/channel/(UC[0-9A-Za-z_-]+)"):
                 m = re.search(pat, html)
                 if m:
-                    return _cache_and_return(m.group(1))
+                    return await _cache_and_return(m.group(1))
         except Exception as e:
             logging.debug("HTML lookup failed for %s: %s", identifier, e)
 
@@ -79,7 +79,7 @@ async def resolve_channel_id(identifier: str) -> str:
             if m:
                 mm = re.search(r"/channel/(UC[0-9A-Za-z_-]+)", m.group(1))
                 if mm:
-                    return _cache_and_return(mm.group(1))
+                    return await _cache_and_return(mm.group(1))
         except Exception:
             pass
 
@@ -101,7 +101,7 @@ async def fetch_youtube_videos(channel_id: str) -> tuple:
             storage.YT_CACHE.setdefault(channel_id, {})
             storage.YT_CACHE[channel_id]["channel_id"] = channel_id
             storage.YT_CACHE[channel_id]["title"] = channel_title
-            storage.save_yt_cache()
+            await storage.save_yt_cache()
         entries = []
         for entry in root.findall(f"{ns}entry"):
             title_el = entry.find(f"{ns}title")

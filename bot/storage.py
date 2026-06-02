@@ -1,4 +1,5 @@
 """All persistent state: in-memory dicts + atomic file I/O."""
+import asyncio
 import json
 import logging
 import os
@@ -69,8 +70,8 @@ def load_guides() -> dict:
     return {}
 
 
-def save_guides() -> None:
-    _atomic_write(GUIDES_FILE, GUIDES)
+async def save_guides() -> None:
+    await asyncio.to_thread(_atomic_write, GUIDES_FILE, GUIDES)
 
 
 def backup_guides() -> None:
@@ -95,8 +96,8 @@ def load_favorites() -> dict:
     return {}
 
 
-def save_favorites() -> None:
-    _atomic_write(FAVORITES_FILE, USER_FAVORITES)
+async def save_favorites() -> None:
+    await asyncio.to_thread(_atomic_write, FAVORITES_FILE, USER_FAVORITES)
 
 
 # ── Ratings ───────────────────────────────────────────────────
@@ -110,8 +111,8 @@ def load_ratings() -> dict:
     return {}
 
 
-def save_ratings() -> None:
-    _atomic_write(RATINGS_FILE, GUIDE_RATINGS)
+async def save_ratings() -> None:
+    await asyncio.to_thread(_atomic_write, RATINGS_FILE, GUIDE_RATINGS)
 
 
 # ── Guides meta ───────────────────────────────────────────────
@@ -125,8 +126,8 @@ def load_guides_meta() -> dict:
     return {}
 
 
-def save_guides_meta() -> None:
-    _atomic_write(GUIDES_META_FILE, GUIDES_META)
+async def save_guides_meta() -> None:
+    await asyncio.to_thread(_atomic_write, GUIDES_META_FILE, GUIDES_META)
 
 
 # ── Settings ──────────────────────────────────────────────────
@@ -140,8 +141,8 @@ def load_settings() -> dict:
     return DEFAULT_SETTINGS.copy()
 
 
-def save_settings() -> None:
-    _atomic_write(SETTINGS_PATH, SETTINGS)
+async def save_settings() -> None:
+    await asyncio.to_thread(_atomic_write, SETTINGS_PATH, SETTINGS)
 
 
 # ── YouTube state ─────────────────────────────────────────────
@@ -157,8 +158,8 @@ def load_yt_channels() -> list:
     return [c.strip() for c in os.environ.get("YT_CHANNELS", "").split(",") if c.strip()]
 
 
-def save_yt_channels() -> None:
-    _atomic_write(YT_CHANNELS_FILE, YT_CHANNELS)
+async def save_yt_channels() -> None:
+    await asyncio.to_thread(_atomic_write, YT_CHANNELS_FILE, YT_CHANNELS)
 
 
 def load_yt_cache() -> dict:
@@ -171,8 +172,8 @@ def load_yt_cache() -> dict:
     return {}
 
 
-def save_yt_cache() -> None:
-    _atomic_write(YT_CACHE_FILE, YT_CACHE)
+async def save_yt_cache() -> None:
+    await asyncio.to_thread(_atomic_write, YT_CACHE_FILE, YT_CACHE)
 
 
 # ── Search history ────────────────────────────────────────────
@@ -186,18 +187,18 @@ def load_search_history() -> dict:
     return {}
 
 
-def save_search_history() -> None:
-    _atomic_write(SEARCH_HISTORY_FILE, SEARCH_HISTORY)
+async def save_search_history() -> None:
+    await asyncio.to_thread(_atomic_write, SEARCH_HISTORY_FILE, SEARCH_HISTORY)
 
 
-def add_to_search_history(user_id: str, query: str) -> None:
+async def add_to_search_history(user_id: str, query: str) -> None:
     import time as _time
     history = SEARCH_HISTORY.setdefault(user_id, [])
     history[:] = [h for h in history if h.get("query", "").lower() != query.lower()]
     history.append({"query": query, "ts": _time.time()})
     if len(history) > 15:
         history[:] = history[-15:]
-    save_search_history()
+    await save_search_history()
 
 
 # ── URL normalization & deduplication ─────────────────────────
@@ -236,7 +237,8 @@ def normalize(text: str) -> str:
     return t
 
 
-def dedupe_guides() -> int:
+def _dedupe_guides_sync() -> int:
+    """Synchronous deduplication used only at boot (no running event loop yet)."""
     seen: dict = {}
     removed = 0
     for category in list(GUIDES.keys()):
@@ -254,7 +256,29 @@ def dedupe_guides() -> int:
             else:
                 seen[n] = (category, title)
     if removed:
-        save_guides()
+        _atomic_write(GUIDES_FILE, GUIDES)
+    return removed
+
+
+async def dedupe_guides() -> int:
+    seen: dict = {}
+    removed = 0
+    for category in list(GUIDES.keys()):
+        entries = GUIDES.get(category, {})
+        for title, url in list(entries.items()):
+            if not url:
+                continue
+            n = normalize_url(url)
+            if n in seen:
+                try:
+                    del GUIDES[category][title]
+                    removed += 1
+                except Exception:
+                    continue
+            else:
+                seen[n] = (category, title)
+    if removed:
+        await save_guides()
     return removed
 
 
@@ -311,7 +335,7 @@ def _boot() -> None:
     YT_KEEP_LIMIT = SETTINGS.get("yt_keep_limit", YT_KEEP_LIMIT)
 
     try:
-        removed = dedupe_guides()
+        removed = _dedupe_guides_sync()
         if removed:
             logging.info("Removed %d duplicate guide links on startup", removed)
     except Exception:

@@ -129,13 +129,13 @@ async def add_guide_cmd(message: types.Message, command: CommandObject) -> None:
         )
         return
     storage.GUIDES[category][title] = url
-    storage.save_guides()
+    await storage.save_guides()
     meta_key = f"{category}|{title}"
     storage.GUIDES_META[meta_key] = {
         "title": title, "url": url, "category": category,
         "added_at": datetime.datetime.utcnow().isoformat()[:19],
     }
-    storage.save_guides_meta()
+    await storage.save_guides_meta()
     invalidate_index()
     await message.reply(
         f" Гайд добавлен!\n\n *Категория:* {category}\n *Название:* {title}\n {url}",
@@ -160,10 +160,10 @@ async def remove_guide_cmd(message: types.Message, command: CommandObject) -> No
     del storage.GUIDES[category][title]
     if not storage.GUIDES[category]:
         del storage.GUIDES[category]
-    storage.save_guides()
+    await storage.save_guides()
     meta_key = f"{category}|{title}"
     storage.GUIDES_META.pop(meta_key, None)
-    storage.save_guides_meta()
+    await storage.save_guides_meta()
     invalidate_index()
     await message.reply(f" Гайд удалён:\n `{category}` → `{title}`", parse_mode="Markdown")
 
@@ -184,7 +184,7 @@ async def edit_guide_cmd(message: types.Message, command: CommandObject) -> None
         return
     old_url = storage.GUIDES[category][title]
     storage.GUIDES[category][title] = new_url
-    storage.save_guides()
+    await storage.save_guides()
     invalidate_index()
     await message.reply(
         f" Гайд обновлён!\n\n *Категория:* {category}\n *Название:* {title}\n"
@@ -231,7 +231,7 @@ async def purge_autoguides(message: types.Message) -> None:
     storage.GUIDES.setdefault(archive, {})
     storage.GUIDES[archive].update(storage.GUIDES[cat])
     del storage.GUIDES[cat]
-    storage.save_guides()
+    await storage.save_guides()
     await message.reply(f" '{cat}' перемещена в '{archive}'.")
 
 
@@ -239,7 +239,7 @@ async def purge_autoguides(message: types.Message) -> None:
 @_require_admin
 async def cleanup_duplicates_cmd(message: types.Message) -> None:
     await message.reply(" Выполняю очистку дубликатов...")
-    removed = storage.dedupe_guides()
+    removed = await storage.dedupe_guides()
     await message.reply(f" Очистка завершена. Удалено дубликатов: {removed}")
 
 
@@ -248,7 +248,7 @@ async def cleanup_duplicates_cmd(message: types.Message) -> None:
 async def toggle_autoresolve(message: types.Message) -> None:
     current = storage.SETTINGS.get("auto_resolve_and_add", True)
     storage.SETTINGS["auto_resolve_and_add"] = not current
-    storage.save_settings()
+    await storage.save_settings()
     await message.reply(f"Настройка auto_resolve_and_add: {storage.SETTINGS['auto_resolve_and_add']}")
 
 
@@ -263,7 +263,7 @@ async def yt_add(message: types.Message, command: CommandObject) -> None:
         await message.reply("Канал уже в списке .")
         return
     storage.YT_CHANNELS.append(arg)
-    storage.save_yt_channels()
+    await storage.save_yt_channels()
     await message.reply(f"Добавил канал : {arg}")
 
 
@@ -276,7 +276,7 @@ async def yt_remove(message: types.Message, command: CommandObject) -> None:
         return
     try:
         storage.YT_CHANNELS.remove(arg)
-        storage.save_yt_channels()
+        await storage.save_yt_channels()
         await message.reply(f"Удалил канал : {arg}")
     except ValueError:
         await message.reply("Канал не найден в списке .")
@@ -307,7 +307,7 @@ async def yt_cache_cmd(message: types.Message) -> None:
 async def yt_prune_on(message: types.Message) -> None:
     storage.YT_PRUNE_REMOVED = True
     storage.SETTINGS["yt_prune_removed"] = True
-    storage.save_settings()
+    await storage.save_settings()
     await message.reply(" Pruning включён ")
 
 
@@ -316,7 +316,7 @@ async def yt_prune_on(message: types.Message) -> None:
 async def yt_prune_off(message: types.Message) -> None:
     storage.YT_PRUNE_REMOVED = False
     storage.SETTINGS["yt_prune_removed"] = False
-    storage.save_settings()
+    await storage.save_settings()
     await message.reply(" Pruning выключен ")
 
 
@@ -329,7 +329,7 @@ async def yt_set_limit(message: types.Message, command: CommandObject) -> None:
         return
     storage.YT_KEEP_LIMIT = int(arg)
     storage.SETTINGS["yt_keep_limit"] = storage.YT_KEEP_LIMIT
-    storage.save_settings()
+    await storage.save_settings()
     await message.reply(f" Новый лимит: {storage.YT_KEEP_LIMIT}")
 
 

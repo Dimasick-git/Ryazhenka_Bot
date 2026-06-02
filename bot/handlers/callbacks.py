@@ -129,7 +129,7 @@ async def handle_rating(callback_query: types.CallbackQuery) -> None:
         ratings["down"] = ratings.get("down", 0) + 1
         await callback_query.answer(" Спасибо за оценку!")
     storage.GUIDE_RATINGS[voted_key] = True
-    storage.save_ratings()
+    await storage.save_ratings()
     try:
         await callback_query.message.edit_reply_markup(reply_markup=make_rating_keyboard(guide_key))
     except Exception:
@@ -156,5 +156,5 @@ async def favadd_callback(callback_query: types.CallbackQuery) -> None:
         await callback_query.answer(" Максимум 50 гайдов в избранном.")
         return
     favs.append({"title": title, "url": url, "category": category})
-    storage.save_favorites()
+    await storage.save_favorites()
     await callback_query.answer(f"⭐ Добавлено: {title[:40]}")
