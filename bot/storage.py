@@ -296,8 +296,8 @@ def merge_entries_into_category(category: str, entries: list) -> int:
 
 # ── Boot: load all state ──────────────────────────────────────
 def _boot() -> None:
-    global GUIDE_RATINGS, GUIDES_META
-    global SETTINGS, YT_CHANNELS, YT_CACHE, YT_PRUNE_REMOVED, YT_KEEP_LIMIT
+    global GUIDES, USER_FAVORITES, GUIDE_RATINGS, GUIDES_META
+    global SETTINGS, YT_CHANNELS, YT_CACHE, YT_PRUNE_REMOVED, YT_KEEP_LIMIT, SEARCH_HISTORY
 
     GUIDES.update(load_guides())
     USER_FAVORITES.update(load_favorites())
