@@ -1,5 +1,4 @@
 """User-facing command handlers."""
-import asyncio
 import hashlib
 import random
 import time
@@ -212,7 +211,7 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
 
     # Try AI for uncertain or missing results
     thinking_msg = await message.reply(" Думаю...")
-    ai_answer = await asyncio.to_thread(ask_ai, query, guide_context)
+    ai_answer = await ask_ai(query, guide_context)
 
     if ai_answer:
         reply_text = f" *AI-ответ по запросу:* _{query}_\n\n{ai_answer}"
@@ -252,7 +251,7 @@ async def ask_command(message: types.Message, command: CommandObject) -> None:
         lines = [f"• {d['title']} ({d['category']}): {d.get('url', '')}" for d, sc in results if sc >= 25]
         guide_context = "\n".join(lines)
 
-    ai_answer = await asyncio.to_thread(ask_ai, query, guide_context)
+    ai_answer = await ask_ai(query, guide_context)
 
     if ai_answer:
         reply_text = f" *Ответ AI:*\n\n{ai_answer}"

@@ -18,15 +18,15 @@ log = logging.getLogger(__name__)
 _cache: dict[str, tuple[str, float]] = {}
 _CACHE_TTL = 600
 
-# Reuse a single client instance — avoids creating a new connection pool per call
-_client: Optional[Any] = None
+# Reuse a single async client instance — avoids creating a new connection pool per call
+_async_client: Optional[Any] = None
 
 
-def _get_client() -> Optional[Any]:
-    global _client
-    if _client is None and _anthropic_available and ANTHROPIC_API_KEY:
-        _client = _anthropic_mod.Anthropic(api_key=ANTHROPIC_API_KEY)
-    return _client
+def _get_async_client() -> Optional[Any]:
+    global _async_client
+    if _async_client is None and _anthropic_available and ANTHROPIC_API_KEY:
+        _async_client = _anthropic_mod.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+    return _async_client
 
 
 def _get_cached(key: str) -> Optional[str]:
@@ -62,10 +62,11 @@ def _build_user_prompt(query: str, guide_context: str) -> str:
     return "\n".join(parts)
 
 
-def ask_ai(query: str, guide_context: str = "") -> Optional[str]:
+async def ask_ai(query: str, guide_context: str = "") -> Optional[str]:
     """
     Query Claude API with the user question + optional guide context.
     Returns the AI answer string, or None if AI is unavailable/failed.
+    Uses prompt caching for the system prompt to reduce latency and cost.
     """
     if not ANTHROPIC_API_KEY or not _anthropic_available:
         return None
@@ -77,13 +78,19 @@ def ask_ai(query: str, guide_context: str = "") -> Optional[str]:
         return cached
 
     try:
-        client = _get_client()
+        client = _get_async_client()
         if client is None:
             return None
-        message = client.messages.create(
+        message = await client.messages.create(
             model=AI_MODEL,
             max_tokens=512,
-            system=_SYSTEM_PROMPT,
+            system=[
+                {
+                    "type": "text",
+                    "text": _SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             messages=[
                 {"role": "user", "content": _build_user_prompt(query, guide_context)}
             ],
