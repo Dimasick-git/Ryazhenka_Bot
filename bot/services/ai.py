@@ -1,8 +1,7 @@
 """AI answer service using Anthropic Claude API with graceful degradation."""
 import logging
-import os
 import time
-from typing import Optional
+from typing import Any, Optional
 
 try:
     import anthropic as _anthropic_mod
@@ -18,6 +17,16 @@ log = logging.getLogger(__name__)
 # Simple in-memory response cache (query → answer, ttl=10 min)
 _cache: dict[str, tuple[str, float]] = {}
 _CACHE_TTL = 600
+
+# Reuse a single client instance — avoids creating a new connection pool per call
+_client: Optional[Any] = None
+
+
+def _get_client() -> Optional[Any]:
+    global _client
+    if _client is None and _anthropic_available and ANTHROPIC_API_KEY:
+        _client = _anthropic_mod.Anthropic(api_key=ANTHROPIC_API_KEY)
+    return _client
 
 
 def _get_cached(key: str) -> Optional[str]:
@@ -68,7 +77,9 @@ def ask_ai(query: str, guide_context: str = "") -> Optional[str]:
         return cached
 
     try:
-        client = _anthropic_mod.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = _get_client()
+        if client is None:
+            return None
         message = client.messages.create(
             model=AI_MODEL,
             max_tokens=512,
