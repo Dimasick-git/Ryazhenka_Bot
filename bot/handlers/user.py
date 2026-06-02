@@ -1,4 +1,5 @@
 """User-facing command handlers."""
+import asyncio
 import hashlib
 import random
 import time
