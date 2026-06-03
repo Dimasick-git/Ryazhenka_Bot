@@ -12,7 +12,7 @@ from aiohttp import web
 
 from bot import storage
 from bot.config import ADMIN_IDS, BOT_TOKEN, SYNC_INTERVAL_SECONDS
-from bot.handlers import admin_router, callbacks_router, inline_router, user_router
+from bot.handlers import admin_router, callbacks_router, inline_router, quiz_router, user_router
 from bot.handlers.user import _cleanup_dialog_ctx
 from bot.middleware import ThrottlingMiddleware
 from bot.nlp import invalidate_index, warm_index
@@ -99,6 +99,9 @@ async def main() -> None:
             BotCommand(command="recommend", description="Репозитории автора"),
             BotCommand(command="fav",       description="Избранное"),
             BotCommand(command="feedback",  description="Предложить гайд"),
+            BotCommand(command="quiz",      description="Тест знаний по Switch CFW"),
+            BotCommand(command="digest",    description="Персональный дайджест гайдов"),
+            BotCommand(command="compare",   description="Сравнить два инструмента/CFW"),
             BotCommand(command="help",      description="Список всех команд"),
         ])
         logging.info("Bot commands registered with Telegram")
@@ -124,6 +127,7 @@ async def main() -> None:
     dp.include_router(admin_router)
     dp.include_router(callbacks_router)
     dp.include_router(inline_router)
+    dp.include_router(quiz_router)
 
     total = sum(len(g) for g in storage.GUIDES.values())
     logging.info("Loaded %d categories, %d guides total", len(storage.GUIDES), total)

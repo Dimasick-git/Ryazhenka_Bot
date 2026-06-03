@@ -604,6 +604,140 @@ async def search_history_cmd(message: types.Message) -> None:
     await message.reply(text, parse_mode="Markdown")
 
 
+@router.message(Command("digest"))
+async def digest_command(message: types.Message) -> None:
+    """Персональный дайджест: последние поиски + топ гайдов + случайные."""
+    user_id = str(message.from_user.id)
+
+    lines = [" *Ваш персональный дайджест*\n" + "─" * 35]
+
+    # --- Топ-3 последних поиска пользователя ---
+    history = storage.SEARCH_HISTORY.get(user_id, [])
+    if history:
+        lines.append("\n *Ваши последние поиски:*")
+        for entry in list(reversed(history))[:3]:
+            q = entry.get("query", "")
+            if q:
+                lines.append(f"  `/guide {q}`")
+    else:
+        lines.append("\n _Поисковая история пуста — попробуйте /guide_")
+
+    # --- Топ-3 трендовых гайда по оценкам ---
+    scores: dict = {}
+    meta: dict = {}
+    for key, val in storage.GUIDE_RATINGS.items():
+        if key.startswith("_meta_"):
+            meta[key[len("_meta_"):]] = val
+        elif isinstance(val, dict):
+            up = val.get("up", 0)
+            down = val.get("down", 0)
+            if up + down > 0:
+                scores[key] = up - down
+
+    if scores:
+        top3 = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:3]
+        lines.append("\n🔥 *Трендовые гайды:*")
+        for key, sc in top3:
+            m = meta.get(key, {})
+            title = m.get("title", key)
+            url = m.get("url", "")
+            rating_val = storage.GUIDE_RATINGS.get(key, {})
+            up = rating_val.get("up", 0) if isinstance(rating_val, dict) else 0
+            down = rating_val.get("down", 0) if isinstance(rating_val, dict) else 0
+            if url:
+                lines.append(f"  [{title}]({url}) — 👍{up} 👎{down}")
+            else:
+                lines.append(f"  {title} — 👍{up} 👎{down}")
+    else:
+        lines.append("\n _Нет оценённых гайдов — оцени любой через /guide_")
+
+    # --- 2 случайных гайда из разных категорий ---
+    all_cats = [c for c, g in storage.GUIDES.items() if g]
+    if len(all_cats) >= 2:
+        chosen_cats = random.sample(all_cats, 2)
+        lines.append("\n *Случайные гайды для вас:*")
+        for cat in chosen_cats:
+            entries = [(t, u) for t, u in storage.GUIDES[cat].items() if u]
+            if entries:
+                title, url = random.choice(entries)
+                lines.append(f"  [{title}]({url}) — _{cat}_")
+    elif all_cats:
+        entries = [(t, u) for t, u in storage.GUIDES[all_cats[0]].items() if u]
+        if entries:
+            lines.append("\n *Случайный гайд:*")
+            title, url = random.choice(entries)
+            lines.append(f"  [{title}]({url})")
+
+    lines.append("\n _Используй /quiz чтобы проверить знания CFW!_")
+
+    await safe_send(message, "\n".join(lines), disable_web_page_preview=True)
+
+
+@router.message(Command("compare"))
+async def compare_command(message: types.Message, command: CommandObject) -> None:
+    """Сравнивает два инструмента/CFW с помощью AI."""
+    args = (command.args or "").strip()
+    if not args:
+        await message.reply(
+            " *Сравнение инструментов Switch CFW*\n\n"
+            "Использование:\n"
+            "`/compare emuNAND vs sysNAND`\n"
+            "`/compare Atmosphere и Hekate`\n"
+            "`/compare Tinfoil, Goldleaf`\n\n"
+            "Разделители: `vs`, `и`, `,`",
+            parse_mode="Markdown",
+        )
+        return
+
+    # Parse two topics from the argument
+    topic1: str = ""
+    topic2: str = ""
+    for sep in (" vs ", " и ", ","):
+        if sep in args:
+            parts = args.split(sep, 1)
+            topic1 = parts[0].strip()
+            topic2 = parts[1].strip()
+            break
+
+    if not topic1 or not topic2:
+        await message.reply(
+            f" Не удалось разобрать два инструмента из: «{args}»\n\n"
+            "Пример: `/compare emuNAND vs sysNAND`",
+            parse_mode="Markdown",
+        )
+        return
+
+    thinking_msg = await message.reply(f" Сравниваю *{topic1}* и *{topic2}*...", parse_mode="Markdown")
+
+    prompt = (
+        f"Сравни два инструмента/понятия Nintendo Switch CFW: «{topic1}» и «{topic2}».\n"
+        "Структура ответа:\n"
+        f"1. Что такое {topic1} (1-2 предложения)\n"
+        f"2. Что такое {topic2} (1-2 предложения)\n"
+        "3. Ключевые отличия (3-5 пунктов)\n"
+        "4. Когда использовать каждый\n"
+        "Отвечай по-русски, кратко и практично."
+    )
+
+    ai_answer = await ask_ai(prompt)
+
+    if ai_answer:
+        reply_text = (
+            f" *Сравнение: {topic1} vs {topic2}*\n"
+            f"{'─' * 35}\n\n"
+            f"{ai_answer}"
+        )
+        await thinking_msg.edit_text(reply_text, parse_mode="Markdown")
+    else:
+        await thinking_msg.edit_text(
+            " AI временно недоступен.\n"
+            "Попробуй:\n"
+            f"• `/ask что такое {topic1}`\n"
+            f"• `/ask что такое {topic2}`",
+            parse_mode="Markdown",
+        )
+
+
 @router.message(Command("help"))
 async def help_command(message: types.Message) -> None:
     text = (
@@ -628,6 +762,10 @@ async def help_command(message: types.Message) -> None:
         "/fav — Показать избранное\n"
         "/fav add `<тема>` — Добавить гайд\n"
         "/fav remove `<номер>` — Удалить\n\n"
+        " *Интерактивные функции:*\n"
+        " /quiz — Тест знаний по Switch CFW (10 вопросов)\n"
+        " /digest — Персональный дайджест гайдов\n"
+        " /compare `<A>` vs `<B>` — Сравнить два инструмента/CFW\n\n"
         " *Обратная связь:*\n"
         "/feedback `<текст>` — Предложить новый гайд\n\n"
         " *Inline-режим:*\n"
