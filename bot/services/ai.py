@@ -29,6 +29,13 @@ def _get_async_client() -> Optional[Any]:
     return _async_client
 
 
+async def close_client() -> None:
+    global _async_client
+    if _async_client is not None:
+        await _async_client.aclose()
+        _async_client = None
+
+
 def _get_cached(key: str) -> Optional[str]:
     entry = _cache.get(key)
     if entry and time.time() - entry[1] < _CACHE_TTL:

@@ -16,6 +16,7 @@ from bot.handlers import admin_router, callbacks_router, inline_router, user_rou
 from bot.handlers.user import _cleanup_dialog_ctx
 from bot.middleware import ThrottlingMiddleware
 from bot.nlp import invalidate_index, warm_index
+from bot.services import ai, github
 from bot.services.sync import resolve_auto_guides_links, sync_sources
 
 
@@ -210,6 +211,8 @@ async def main() -> None:
         # Graceful shutdown -- закрываем aiohttp session чтобы SIGTERM от
         # Railway не оставил висящий getUpdates на стороне Telegram'а.
         await bot.session.close()
+        await github.close_session()
+        await ai.close_client()
         logging.info("Bot session closed cleanly")
 
 
