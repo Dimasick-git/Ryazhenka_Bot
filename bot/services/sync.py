@@ -5,6 +5,13 @@ import re
 
 import aiohttp
 
+_DATE_RE = re.compile(r"\[(\d{4}-\d{2}-\d{2})\]")
+
+
+def _date_sort_key(k: str) -> str:
+    m = _DATE_RE.match(k)
+    return m.group(1) if m else "1970-01-01"
+
 from .. import storage
 from ..config import GITHUB_REPO
 from . import youtube, github
@@ -120,11 +127,7 @@ async def sync_sources() -> dict:
                     safe_name = re.sub(r"[^0-9a-zA-Zа-яёА-ЯЁ _\-]", " ", channel_title or ch or cid or "Видео").strip()
                     cat_name = f"YouTube - {safe_name}"
 
-                    def _date_key(tu):
-                        m = re.match(r"\[(\d{4}-\d{2}-\d{2})\]", tu[0])
-                        return m.group(1) if m else "1970-01-01"
-
-                    yt_entries.sort(key=_date_key, reverse=True)
+                    yt_entries.sort(key=lambda tu: _date_sort_key(tu[0]), reverse=True)
                     added = storage.merge_entries_into_category(cat_name, yt_entries)
                     total_added += added
 
@@ -141,8 +144,7 @@ async def sync_sources() -> dict:
 
                     # enforce keep limit
                     keys = list(storage.GUIDES.get(cat_name, {}).keys())
-                    keys_sorted = sorted(keys, key=lambda k: re.match(r"\[(\d{4}-\d{2}-\d{2})\]", k).group(1)
-                                         if re.match(r"\[(\d{4}-\d{2}-\d{2})\]", k) else "1970-01-01", reverse=True)
+                    keys_sorted = sorted(keys, key=_date_sort_key, reverse=True)
                     for old in keys_sorted[storage.YT_KEEP_LIMIT:]:
                         try:
                             del storage.GUIDES[cat_name][old]
