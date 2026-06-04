@@ -17,7 +17,7 @@ from bot.handlers.user import _cleanup_dialog_ctx
 from bot.middleware import ThrottlingMiddleware
 from bot.nlp import invalidate_index, warm_index
 from bot.services import ai, github
-from bot.services.sync import resolve_auto_guides_links, sync_sources
+from bot.services.sync import close_ddg_session, resolve_auto_guides_links, sync_sources
 
 
 async def _health_server() -> None:
@@ -216,6 +216,7 @@ async def main() -> None:
         # Railway не оставил висящий getUpdates на стороне Telegram'а.
         await bot.session.close()
         await github.close_session()
+        await close_ddg_session()
         await ai.close_client()
         logging.info("Bot session closed cleanly")
 

@@ -247,8 +247,8 @@ def normalize(text: str) -> str:
     return t
 
 
-def _dedupe_guides_sync() -> int:
-    """Synchronous deduplication used only at boot (no running event loop yet)."""
+def _remove_duplicate_guides() -> int:
+    """Remove duplicate URLs from GUIDES in-place; returns count of removed entries."""
     seen: dict = {}
     removed = 0
     for category in list(GUIDES.keys()):
@@ -265,28 +265,19 @@ def _dedupe_guides_sync() -> int:
                     continue
             else:
                 seen[n] = (category, title)
+    return removed
+
+
+def _dedupe_guides_sync() -> int:
+    """Synchronous deduplication used only at boot (no running event loop yet)."""
+    removed = _remove_duplicate_guides()
     if removed:
         _atomic_write(GUIDES_FILE, GUIDES)
     return removed
 
 
 async def dedupe_guides() -> int:
-    seen: dict = {}
-    removed = 0
-    for category in list(GUIDES.keys()):
-        entries = GUIDES.get(category, {})
-        for title, url in list(entries.items()):
-            if not url:
-                continue
-            n = normalize_url(url)
-            if n in seen:
-                try:
-                    del GUIDES[category][title]
-                    removed += 1
-                except Exception:
-                    continue
-            else:
-                seen[n] = (category, title)
+    removed = _remove_duplicate_guides()
     if removed:
         await save_guides()
     return removed

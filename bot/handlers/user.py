@@ -112,10 +112,12 @@ async def _perform_search(message: types.Message, query: str) -> None:
     best, best_score = results[0]
     if best_score >= 75:
         guide_key = build_guide_key(best["url"])
-        storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
-            "title": best["title"], "url": best["url"], "category": best["category"],
-        }
-        await storage.save_ratings()
+        meta_key = f"_meta_{guide_key}"
+        if meta_key not in storage.GUIDE_RATINGS:
+            storage.GUIDE_RATINGS[meta_key] = {
+                "title": best["title"], "url": best["url"], "category": best["category"],
+            }
+            await storage.save_ratings()
         await message.reply(
             f" Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
@@ -197,10 +199,12 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
         # High-confidence local hit — show it directly (fast path)
         best = results[0][0]
         guide_key = build_guide_key(best["url"])
-        storage.GUIDE_RATINGS[f"_meta_{guide_key}"] = {
-            "title": best["title"], "url": best["url"], "category": best["category"],
-        }
-        await storage.save_ratings()
+        meta_key = f"_meta_{guide_key}"
+        if meta_key not in storage.GUIDE_RATINGS:
+            storage.GUIDE_RATINGS[meta_key] = {
+                "title": best["title"], "url": best["url"], "category": best["category"],
+            }
+            await storage.save_ratings()
         await message.reply(
             f" Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
