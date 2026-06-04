@@ -2,38 +2,54 @@
 import asyncio
 import logging
 import re
+import urllib.parse
 
 import aiohttp
 
+from .. import storage
+from ..config import ADMIN_IDS, ALLOWED_DOMAINS, GITHUB_REPO
+from . import github, youtube
+
 _DATE_RE = re.compile(r"\[(\d{4}-\d{2}-\d{2})\]")
+_DDG_TIMEOUT = aiohttp.ClientTimeout(total=30)
+_sync_lock = asyncio.Lock()
+
+# Module-level session reused across DDG calls to avoid per-call connection overhead.
+_ddg_session: aiohttp.ClientSession | None = None
 
 
 def _date_sort_key(k: str) -> str:
     m = _DATE_RE.match(k)
     return m.group(1) if m else "1970-01-01"
 
-from .. import storage
-from ..config import GITHUB_REPO
-from . import youtube, github
-
-_sync_lock = asyncio.Lock()
-
 
 def _is_valid_url(url: str) -> bool:
     return isinstance(url, str) and url.startswith("https://")
 
 
+def _get_ddg_session() -> aiohttp.ClientSession:
+    global _ddg_session
+    if _ddg_session is None or _ddg_session.closed:
+        _ddg_session = aiohttp.ClientSession()
+    return _ddg_session
+
+
+async def close_ddg_session() -> None:
+    global _ddg_session
+    if _ddg_session is not None and not _ddg_session.closed:
+        await _ddg_session.close()
+        _ddg_session = None
+
+
 async def resolve_duckduckgo_first(title: str) -> str:
-    from ..config import ALLOWED_DOMAINS
-    import urllib.parse
     query = f"{title} Nintendo Switch site:github.com OR site:rentry.org OR site:github.io OR site:gamebrew.org OR site:gbatemp.net"
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                "https://duckduckgo.com/html/", data={"q": query},
-                timeout=aiohttp.ClientTimeout(total=30),
-            ) as resp:
-                text = await resp.text()
+        session = _get_ddg_session()
+        async with session.post(
+            "https://duckduckgo.com/html/", data={"q": query},
+            timeout=_DDG_TIMEOUT,
+        ) as resp:
+            text = await resp.text()
         hrefs = re.findall(r'href="([^"]+)"', text)
         for h in hrefs:
             try:
@@ -58,7 +74,6 @@ async def resolve_duckduckgo_first(title: str) -> str:
 
 
 async def resolve_auto_guides_links(bot, notify_admins: bool = True) -> None:
-    from ..config import ADMIN_IDS
     cat = "🆕 Авто-гайды"
     if cat not in storage.GUIDES:
         return
