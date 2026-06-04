@@ -146,7 +146,6 @@ async def _perform_search(message: types.Message, query: str) -> None:
                 kb.inline_keyboard.append([InlineKeyboardButton(
                     text=f"Открыть: {doc['title'][:40]}", callback_data=f"open|{key}",
                 )])
-        _cleanup_dialog_ctx()
         await message.reply(text, parse_mode="Markdown", reply_markup=kb if kb.inline_keyboard else None)
         return
 

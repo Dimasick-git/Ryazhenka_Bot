@@ -30,6 +30,12 @@ YT_CHANNELS: list = []
 YT_CACHE: dict = {}
 SEARCH_HISTORY: dict = {}  # user_id -> [{"query": str, "ts": float}, ...]
 
+# ── Concurrency locks for mutable dicts ──────────────
+GUIDES_LOCK: asyncio.Lock = asyncio.Lock()
+USER_FAVORITES_LOCK: asyncio.Lock = asyncio.Lock()
+GUIDE_RATINGS_LOCK: asyncio.Lock = asyncio.Lock()
+SEARCH_HISTORY_LOCK: asyncio.Lock = asyncio.Lock()
+
 try:
     YT_PRUNE_REMOVED: bool = os.environ.get("YT_PRUNE_REMOVED", "1") in ("1", "true", "True")
 except Exception:
@@ -71,7 +77,8 @@ def load_guides() -> dict:
 
 
 async def save_guides() -> None:
-    await asyncio.to_thread(_atomic_write, GUIDES_FILE, GUIDES)
+    async with GUIDES_LOCK:
+        await asyncio.to_thread(_atomic_write, GUIDES_FILE, GUIDES)
 
 
 def backup_guides() -> None:
@@ -97,7 +104,8 @@ def load_favorites() -> dict:
 
 
 async def save_favorites() -> None:
-    await asyncio.to_thread(_atomic_write, FAVORITES_FILE, USER_FAVORITES)
+    async with USER_FAVORITES_LOCK:
+        await asyncio.to_thread(_atomic_write, FAVORITES_FILE, USER_FAVORITES)
 
 
 # ── Ratings ───────────────────────────────────────────────────
@@ -112,7 +120,8 @@ def load_ratings() -> dict:
 
 
 async def save_ratings() -> None:
-    await asyncio.to_thread(_atomic_write, RATINGS_FILE, GUIDE_RATINGS)
+    async with GUIDE_RATINGS_LOCK:
+        await asyncio.to_thread(_atomic_write, RATINGS_FILE, GUIDE_RATINGS)
 
 
 # ── Guides meta ───────────────────────────────────────────────
@@ -193,11 +202,12 @@ async def save_search_history() -> None:
 
 async def add_to_search_history(user_id: str, query: str) -> None:
     import time as _time
-    history = SEARCH_HISTORY.setdefault(user_id, [])
-    history[:] = [h for h in history if h.get("query", "").lower() != query.lower()]
-    history.append({"query": query, "ts": _time.time()})
-    if len(history) > 15:
-        history[:] = history[-15:]
+    async with SEARCH_HISTORY_LOCK:
+        history = SEARCH_HISTORY.setdefault(user_id, [])
+        history[:] = [h for h in history if h.get("query", "").lower() != query.lower()]
+        history.append({"query": query, "ts": _time.time()})
+        if len(history) > 15:
+            history[:] = history[-15:]
     await save_search_history()
 
 

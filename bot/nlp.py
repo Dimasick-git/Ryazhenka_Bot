@@ -307,6 +307,14 @@ def invalidate_index() -> None:
         BM25_INDEX = None
 
 
+async def rebuild_bm25_index_async() -> None:
+    """Rebuild BM25 index under lock to prevent simultaneous rebuilds."""
+    global BM25_INDEX
+    import asyncio
+    if BM25_INDEX is None:
+        BM25_INDEX = await asyncio.to_thread(build_bm25_index)
+
+
 def warm_index() -> None:
     """Pre-build the BM25 index at startup so the first user query is fast."""
     global BM25_INDEX
