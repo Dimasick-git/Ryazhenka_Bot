@@ -28,14 +28,14 @@ async def safe_send(target, text: str, reply_markup=None, disable_web_page_previ
             disable_web_page_preview=disable_web_page_preview,
         )
         return
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug("safe_send markdown failed, retrying plain: %s", e)
     try:
         await target.reply(text, reply_markup=reply_markup,
                            disable_web_page_preview=disable_web_page_preview)
         return
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug("safe_send plain reply failed, trying answer: %s", e)
     try:
         await target.answer(text)
     except Exception:
