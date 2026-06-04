@@ -1,6 +1,8 @@
 """GitHub Atom feed and REST API helpers."""
+import asyncio
 import logging
 import re
+import time
 import xml.etree.ElementTree as ET
 
 import aiohttp
@@ -12,6 +14,23 @@ _TIMEOUT_20 = aiohttp.ClientTimeout(total=20)
 
 # Reuse a single session across calls (created lazily, one per event loop).
 _session: aiohttp.ClientSession | None = None
+
+# Release cache: repo_full → (release_dict | None, timestamp)
+_releases_cache: dict[str, tuple] = {}
+_RELEASES_CACHE_TTL = 3600  # 1 hour
+
+_RYAZHA_REPOS = [
+    "Dimasick-git/RCU",
+    "Dimasick-git/AIO-Switch-Updater",
+    "Dimasick-git/ovlSysmodules",
+    "Dimasick-git/FPSLocker",
+    "Dimasick-git/nx-ovlloader",
+    "Dimasick-git/EdiZon",
+    "Dimasick-git/Fizeau",
+    "Dimasick-git/Mission-Control",
+    "Dimasick-git/libryazhahand",
+    "Dimasick-git/RyazhaTune",
+]
 
 
 def _get_session() -> aiohttp.ClientSession:
@@ -56,6 +75,70 @@ async def fetch_github_releases(repo: str) -> list:
     except Exception as e:
         logging.warning("Failed fetching GitHub releases: %s", e)
         return []
+
+
+async def fetch_latest_release(repo: str) -> dict | None:
+    """Fetch the latest release for a repo via GitHub REST API."""
+    try:
+        session = _get_session()
+        async with session.get(
+            f"https://api.github.com/repos/{repo}/releases/latest",
+            timeout=_TIMEOUT_20,
+        ) as resp:
+            if resp.status == 404:
+                return None
+            resp.raise_for_status()
+            data = await resp.json()
+            return {
+                "tag": data.get("tag_name", ""),
+                "name": data.get("name", ""),
+                "url": data.get("html_url", ""),
+                "date": (data.get("published_at") or "")[:10],
+                "prerelease": data.get("prerelease", False),
+                "assets": [
+                    {
+                        "name": a.get("name", ""),
+                        "url": a.get("browser_download_url", ""),
+                        "size": a.get("size", 0),
+                    }
+                    for a in data.get("assets", [])[:4]
+                ],
+            }
+    except Exception as e:
+        logging.debug("Failed fetching release for %s: %s", repo, e)
+        return None
+
+
+async def fetch_ryazha_releases() -> list[tuple[str, dict]]:
+    """Fetch latest releases from all Ryazhenka repos concurrently, with 1h cache."""
+    now = time.monotonic()
+    cached_results: list[tuple[str, dict]] = []
+    repos_to_fetch: list[str] = []
+
+    for repo in _RYAZHA_REPOS:
+        entry = _releases_cache.get(repo)
+        if entry is not None:
+            data, ts = entry
+            if now - ts < _RELEASES_CACHE_TTL:
+                if data:
+                    cached_results.append((repo, data))
+                continue
+        repos_to_fetch.append(repo)
+
+    if repos_to_fetch:
+        results = await asyncio.gather(
+            *[fetch_latest_release(r) for r in repos_to_fetch],
+            return_exceptions=True,
+        )
+        for repo, result in zip(repos_to_fetch, results):
+            if isinstance(result, dict):
+                _releases_cache[repo] = (result, now)
+                cached_results.append((repo, result))
+            else:
+                _releases_cache[repo] = (None, now)
+
+    cached_results.sort(key=lambda x: x[1].get("date", ""), reverse=True)
+    return cached_results
 
 
 async def fetch_github_repos(user_or_org: str, limit: int = 20) -> list:

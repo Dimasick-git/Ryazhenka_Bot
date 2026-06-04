@@ -1,6 +1,7 @@
 """User-facing command handlers."""
 import asyncio
 import hashlib
+import logging
 import random
 import time
 import uuid
@@ -741,6 +742,60 @@ async def compare_command(message: types.Message, command: CommandObject) -> Non
         )
 
 
+@router.message(Command("releases"))
+async def releases_command(message: types.Message) -> None:
+    """Показывает последние релизы Ryazhenka репозиториев."""
+    thinking_msg = await message.reply("⏳ Загружаю последние релизы Ryazhenka...")
+
+    try:
+        from ..services.github import fetch_ryazha_releases
+        releases = await fetch_ryazha_releases()
+    except Exception as e:
+        logging.error("Failed to fetch releases: %s", e)
+        await thinking_msg.edit_text("⚠️ Не удалось загрузить релизы. Попробуйте позже.")
+        return
+
+    if not releases:
+        await thinking_msg.edit_text("ℹ️ Релизы пока не найдены.")
+        return
+
+    lines = ["🚀 *Последние релизы Ryazhenka*\n" + "─" * 35]
+
+    for repo_full, release in releases[:10]:
+        repo_name = repo_full.split("/")[-1]
+        tag = release.get("tag", "—")
+        date = release.get("date", "")
+        url = release.get("url", "")
+        prerelease = release.get("prerelease", False)
+
+        pre_mark = " _[pre]_" if prerelease else ""
+        lines.append(f"\n*{repo_name}*{pre_mark}")
+        if url:
+            lines.append(f"  [{tag}]({url}) · `{date}`")
+        else:
+            lines.append(f"  {tag} · `{date}`")
+
+        for asset in release.get("assets", []):
+            name = asset.get("name", "")
+            dl_url = asset.get("url", "")
+            size = asset.get("size", 0)
+            if not name or not dl_url:
+                continue
+            if name.endswith((".nro", ".zip", ".7z")):
+                size_mb = size / (1024 * 1024) if size else 0
+                size_str = f" `{size_mb:.1f}MB`" if size_mb > 0 else ""
+                lines.append(f"  📦 [{name}]({dl_url}){size_str}")
+                break
+
+    lines.append("\n_Данные кэшируются на 1 час_")
+
+    await thinking_msg.edit_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+    )
+
+
 @router.message(Command("help"))
 async def help_command(message: types.Message) -> None:
     text = (
@@ -760,7 +815,8 @@ async def help_command(message: types.Message) -> None:
         " /cat `<название>` — Псевдоним /category\n"
         "🔥 /trending — Топ гайдов по оценкам\n"
         " /history — Ваши последние поисковые запросы\n"
-        " /recommend — Репозитории автора\n\n"
+        " /recommend — Репозитории автора\n"
+        "🚀 /releases — Последние релизы Ryazhenka\n\n"
         "⭐ *Избранное:*\n"
         "/fav — Показать избранное\n"
         "/fav add `<тема>` — Добавить гайд\n"

@@ -102,6 +102,7 @@ async def main() -> None:
             BotCommand(command="quiz",      description="Тест знаний по Switch CFW"),
             BotCommand(command="digest",    description="Персональный дайджест гайдов"),
             BotCommand(command="compare",   description="Сравнить два инструмента/CFW"),
+            BotCommand(command="releases",  description="Последние релизы Ryazhenka"),
             BotCommand(command="help",      description="Список всех команд"),
         ])
         logging.info("Bot commands registered with Telegram")
