@@ -25,4 +25,4 @@ ALLOWED_DOMAINS = ["github.com", "rentry.org", "github.io", "gamebrew.org", "gba
 
 ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 # Model used for AI answers (override via env var to switch tiers)
-AI_MODEL: str = os.environ.get("AI_MODEL", "claude-haiku-4-5-20251001")
+AI_MODEL: str = os.environ.get("AI_MODEL", "claude-haiku-4-5")

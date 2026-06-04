@@ -206,6 +206,8 @@ def ngrams(tokens: list, n: int = 2) -> list:
 
 # ── BM25 index ────────────────────────────────────────────────
 BM25_INDEX: Optional[dict] = None
+import asyncio as _asyncio
+_BM25_LOCK: _asyncio.Lock = _asyncio.Lock()
 
 
 def build_bm25_index() -> dict:
@@ -300,6 +302,15 @@ def search_guides(query: str, top_n: int = 10) -> list:
 def invalidate_index() -> None:
     global BM25_INDEX
     BM25_INDEX = None
+
+
+async def rebuild_bm25_index_async() -> None:
+    """Rebuild BM25 index under lock to prevent simultaneous rebuilds."""
+    global BM25_INDEX
+    async with _BM25_LOCK:
+        if BM25_INDEX is None:
+            import asyncio
+            BM25_INDEX = await asyncio.to_thread(build_bm25_index)
 
 
 def warm_index() -> None:
