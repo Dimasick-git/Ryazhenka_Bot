@@ -4,6 +4,7 @@ import logging
 import math
 import os
 import re
+import threading
 from typing import Optional
 
 from . import storage
@@ -188,7 +189,7 @@ def generate_variants(token: str) -> list:
         if " " in v:
             new.add(v.replace(" ", ""))
             new.add(v.replace(" ", "-"))
-        elif len(v) > 4 and v.startswith("emu") and len(v) > 3:
+        elif len(v) > 4 and v.startswith("emu"):
             new.add("emu " + v[3:])
         new.add(simple_stem(v))
     variants.update(new)
@@ -206,6 +207,7 @@ def ngrams(tokens: list, n: int = 2) -> list:
 
 # ── BM25 index ────────────────────────────────────────────────
 BM25_INDEX: Optional[dict] = None
+_BM25_LOCK = threading.Lock()
 
 
 def build_bm25_index() -> dict:
@@ -250,7 +252,9 @@ def bm25_score(query_terms: list, index: dict, k1: float = 1.5, b: float = 0.75)
 def search_guides(query: str, top_n: int = 10) -> list:
     global BM25_INDEX
     if BM25_INDEX is None:
-        BM25_INDEX = build_bm25_index()
+        with _BM25_LOCK:
+            if BM25_INDEX is None:
+                BM25_INDEX = build_bm25_index()
 
     q_terms = apply_synonyms(tokenize(query))
     q_expanded: list = []
@@ -299,11 +303,13 @@ def search_guides(query: str, top_n: int = 10) -> list:
 
 def invalidate_index() -> None:
     global BM25_INDEX
-    BM25_INDEX = None
+    with _BM25_LOCK:
+        BM25_INDEX = None
 
 
 def warm_index() -> None:
     """Pre-build the BM25 index at startup so the first user query is fast."""
     global BM25_INDEX
-    if BM25_INDEX is None:
-        BM25_INDEX = build_bm25_index()
+    with _BM25_LOCK:
+        if BM25_INDEX is None:
+            BM25_INDEX = build_bm25_index()
