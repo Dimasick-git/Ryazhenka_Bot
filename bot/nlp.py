@@ -37,7 +37,7 @@ try:
     _HAVE_FUZZY = True
 except Exception:
     try:
-        from fuzzywuzzy import fuzz  # type: ignore
+        from thefuzz import fuzz  # type: ignore
         _HAVE_FUZZY = True
     except Exception:
         from difflib import SequenceMatcher

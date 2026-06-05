@@ -25,7 +25,7 @@ Telegram-бот для комьюнити Ryazhenka CFW. Хранит ~22KB JSON
 - `/stats`, `/help`
 
 **Админские** (если `tg_id` в `ADMIN_IDS`):
-- `/status`, `/sync`, `/restart_polling`
+- `/status`, `/sync`, `/reload_guides`, `/restart_polling`
 - `/add_guide`, `/remove_guide`, `/edit_guide`, `/list_guides`
 - `/yt_add`, `/yt_remove`, `/yt_list`, `/yt_cache`, `/yt_set_limit`, `/yt_prune_on|off`
 - `/purge_autoguides`, `/cleanup_duplicates`, `/toggle_autoresolve`
@@ -37,7 +37,7 @@ Inline mode: `@your_bot <query>` — inline-результаты с гайдам
 - **aiogram 3.22** — Telegram API + polling.
 - **aiohttp** — встроенный HTTP-сервер для health check (`/health`) и `/yt_latest`.
 - **requests** — GitHub/YouTube RSS.
-- **fuzzywuzzy** (опц. `python-Levenshtein`) — fuzzy fallback. Если нет — встроенный pure-Python алгоритм.
+- **thefuzz** (опц.) — fuzzy fallback. Если нет — встроенный pure-Python алгоритм.
 - **BM25** локальный (без sentence-transformers) — `bot/nlp.py`.
 - Python 3.11.
 
@@ -54,7 +54,7 @@ bot/
   services/              github.py, youtube.py, sync.py
 guides.json              knowledge base
 docs/index.html          static (для GitHub Pages, опционально)
-scripts/                 утилиты: run_sync, generate_synonyms, ...
+scripts/                 утилиты: run_sync, generate_synonyms, resolve_links, ...
 tests/                   pytest tests
 ```
 

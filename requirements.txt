@@ -3,5 +3,5 @@ aiohttp==3.13.5
 python-dotenv==1.2.2
 requests==2.34.2
 rapidfuzz==3.13.0
-python-Levenshtein==0.27.1
+thefuzz==0.22.1
 anthropic>=0.40.0
