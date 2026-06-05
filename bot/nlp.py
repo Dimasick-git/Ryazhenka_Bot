@@ -61,15 +61,69 @@ STOP_WORDS = {
 }
 
 SYNONYMS: dict = {
+    # Battery
     "batter": "battery", "batery": "battery", "batt": "battery", "battery": "battery",
     "batteryfix": "battery", "batteryfixes": "battery", "battery drain": "battery",
     "batt drain": "battery", "batteryproblem": "battery", "battery problem": "battery",
+    "акб": "battery", "батарея": "battery", "батарейка": "battery",
+    # emuMMC / emuNAND
     "emummc": "emummc", "emmummc": "emummc", "emmumc": "emummc", "emumc": "emummc",
     "emu mmc": "emummc", "emu-mmc": "emummc", "emu nand": "emunand",
     "emunand": "emunand", "emu-nand": "emunand", "emunad": "emunand", "emunanc": "emunand",
-    "cfw": "custom firmware", "atmo": "atmosphere", "atmos": "atmosphere",
-    "atmosphere": "atmosphere", "fix": "fix", "repair": "fix",
-    "install": "install", "remove": "remove",
+    "эмунанд": "emunand", "эмумсд": "emummc",
+    # CFW / Atmosphere
+    "cfw": "custom firmware", "атмосфера": "atmosphere",
+    "atmo": "atmosphere", "atmos": "atmosphere", "atmosphere": "atmosphere",
+    "кастом": "custom firmware", "прошивка": "custom firmware",
+    # Hekate / bootloader
+    "хекате": "hekate", "гекате": "hekate", "bootloader": "hekate",
+    "бутлоадер": "hekate", "загрузчик": "hekate",
+    # Installers
+    "тинфойл": "tinfoil", "тинфоил": "tinfoil",
+    "голдлиф": "goldleaf", "голдлист": "goldleaf",
+    "авту": "awoo", "awoo installer": "awoo",
+    "dbi": "dbi", "дби": "dbi",
+    # Tesla / overlay
+    "tesla menu": "tesla", "теслa": "tesla", "тесла": "tesla",
+    "overlay": "overlay", "оверлей": "overlay",
+    # RCU / sys-clk / clocks
+    "rcu": "rcu", "ркю": "rcu", "ryazha clock": "rcu",
+    "sysclk": "sys-clk", "sys clk": "sys-clk", "частоты": "clock",
+    "overclock": "clock", "разгон": "clock",
+    # sigpatches
+    "sigpatch": "sigpatches", "sig patch": "sigpatches", "патчи": "sigpatches",
+    "сигпатчи": "sigpatches", "сигпатч": "sigpatches",
+    # backup / NAND dump
+    "backup": "backup", "бэкап": "backup", "резервная копия": "backup",
+    "nand dump": "backup", "дамп": "backup",
+    # Update / install
+    "fix": "fix", "repair": "fix", "починить": "fix", "исправить": "fix",
+    "install": "install", "установить": "install", "установка": "install",
+    "remove": "remove", "удалить": "remove", "удаление": "remove",
+    "update": "update", "обновить": "update", "обновление": "update",
+    "aio": "aio switch updater", "аио": "aio switch updater",
+    # Lockpick
+    "lockpick": "lockpick", "ключи": "lockpick", "keys": "lockpick",
+    # Online / ban
+    "онлайн": "online", "бан": "ban", "бана": "ban",
+    "sysnand": "sysnand", "sys nand": "sysnand", "системная нанд": "sysnand",
+    # FPS / performance
+    "fps": "fps", "фпс": "fps", "fpslocker": "fps", "блокировка фпс": "fps",
+    "производительность": "performance", "лаги": "performance",
+    # Game/cheats
+    "cheat": "cheat", "читы": "cheat", "чит": "cheat",
+    "edizon": "edizon", "эдизон": "edizon",
+    # Mission Control / bluetooth
+    "bluetooth": "mission control", "геймпад": "mission control",
+    "контроллер": "mission control", "джойстик": "mission control",
+    # Fizeau / display
+    "fizeau": "fizeau", "фильтр": "fizeau", "цветовой": "fizeau",
+    # SD card
+    "sd": "sd card", "мсд": "sd card", "флешка": "sd card",
+    "карта памяти": "sd card", "microsd": "sd card",
+    # Error / crash
+    "ошибка": "error", "крэш": "crash", "вылет": "crash",
+    "error": "error", "crash": "crash",
 }
 
 # Load generated synonyms if present
@@ -272,6 +326,8 @@ def search_guides(query: str, top_n: int = 10) -> list:
     for idx, doc in enumerate(BM25_INDEX["docs"]):
         title, cat, url = doc["title"], doc["category"], doc["url"]
         t_lower = title.lower()
+        c_lower = cat.lower()
+
         if q_lower in t_lower or t_lower in q_lower:
             score = 95.0
         else:
@@ -288,6 +344,19 @@ def search_guides(query: str, top_n: int = 10) -> list:
                     score = max(score, lev_score)
                 except Exception:
                     pass
+
+        # Category name match bonus: boosts results whose category directly matches
+        # the query, even when the individual guide title doesn't.
+        if q_lower in c_lower or c_lower in q_lower:
+            score = max(score, 55.0)
+        else:
+            try:
+                cat_fuzzy = fuzz.partial_ratio(q_lower, c_lower)
+                if cat_fuzzy >= 80:
+                    score = max(score, score * 0.85 + cat_fuzzy * 0.15)
+            except Exception:
+                pass
+
         if bm_scores:
             bm_norm = min(100.0, bm_scores[idx] / (bm_max + 1e-9) * 100.0)
             if score >= 30 and bm_norm >= 30:
