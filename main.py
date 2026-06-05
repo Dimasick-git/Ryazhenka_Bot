@@ -101,6 +101,7 @@ async def main() -> None:
             BotCommand(command="feedback",  description="Предложить гайд"),
             BotCommand(command="quiz",      description="Тест знаний по Switch CFW"),
             BotCommand(command="digest",    description="Персональный дайджест гайдов"),
+            BotCommand(command="week",      description="Недельная статистика и топ поисков"),
             BotCommand(command="compare",   description="Сравнить два инструмента/CFW"),
             BotCommand(command="releases",  description="Последние релизы Ryazhenka"),
             BotCommand(command="help",      description="Список всех команд"),

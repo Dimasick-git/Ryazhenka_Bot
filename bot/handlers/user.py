@@ -619,21 +619,42 @@ async def search_history_cmd(message: types.Message) -> None:
 
 @router.message(Command("digest"))
 async def digest_command(message: types.Message) -> None:
-    """Персональный дайджест: последние поиски + топ гайдов + случайные."""
+    """Персональный дайджест: последние поиски + AI-рекомендации + топ гайдов."""
     user_id = str(message.from_user.id)
 
     lines = [" *Ваш персональный дайджест*\n" + "─" * 35]
 
-    # --- Топ-3 последних поиска пользователя ---
+    # --- Топ-5 последних поисков пользователя ---
     history = storage.SEARCH_HISTORY.get(user_id, [])
+    recent_queries = []
     if history:
         lines.append("\n *Ваши последние поиски:*")
-        for entry in list(reversed(history))[:3]:
+        for entry in list(reversed(history))[:5]:
             q = entry.get("query", "")
             if q:
                 lines.append(f"  `/guide {q}`")
+                recent_queries.append(q)
     else:
         lines.append("\n _Поисковая история пуста — попробуйте /guide_")
+
+    # --- AI-рекомендации на основе истории ---
+    if recent_queries:
+        try:
+            rec_prompt = (
+                f"Пользователь искал в боте по Nintendo Switch CFW: {', '.join(recent_queries[:3])}.\n"
+                "На основе этих тем порекомендуй 2-3 смежных темы которые могут быть полезны "
+                "для изучения. Формат: короткий список тем (1 строка каждая). "
+                "Без введения, только темы."
+            )
+            ai_rec = await ask_ai(rec_prompt)
+            if ai_rec:
+                lines.append("\n🤖 *AI рекомендует изучить:*")
+                for rec_line in ai_rec.strip().split("\n")[:3]:
+                    rec_line = rec_line.strip().lstrip("•-– ").strip()
+                    if rec_line:
+                        lines.append(f"  • `/guide {rec_line}`")
+        except Exception:
+            pass
 
     # --- Топ-3 трендовых гайда по оценкам ---
     scores, meta = _compute_ratings()
@@ -672,6 +693,63 @@ async def digest_command(message: types.Message) -> None:
             lines.append(f"  [{title}]({url})")
 
     lines.append("\n _Используй /quiz чтобы проверить знания CFW!_")
+
+    await safe_send(message, "\n".join(lines), disable_web_page_preview=True)
+
+
+@router.message(Command("week"))
+async def week_command(message: types.Message) -> None:
+    """Недельная статистика: топ поисков, лучшие гайды, активность."""
+    from collections import Counter
+
+    lines = ["📊 *Недельная активность*\n" + "─" * 35]
+
+    # --- Топ поисковых запросов за неделю ---
+    import time as _time
+    week_ago = _time.time() - 7 * 86400
+    all_queries: list = []
+    for uid, entries in storage.SEARCH_HISTORY.items():
+        for entry in entries:
+            if entry.get("ts", 0) >= week_ago:
+                q = entry.get("query", "").strip()
+                if q:
+                    all_queries.append(q.lower())
+
+    if all_queries:
+        top_queries = Counter(all_queries).most_common(5)
+        lines.append("\n🔍 *Топ поисков за неделю:*")
+        for i, (q, cnt) in enumerate(top_queries, 1):
+            lines.append(f"  {i}. `{q}` — {cnt} раз{'а' if cnt > 1 else ''}")
+    else:
+        lines.append("\n _Нет данных о поисках за последнюю неделю_")
+
+    # --- Лучшие гайды по оценкам ---
+    scores, meta = _compute_ratings()
+    if scores:
+        top5 = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:5]
+        lines.append("\n⭐ *Лучшие гайды по оценкам:*")
+        for i, (key, sc) in enumerate(top5, 1):
+            m = meta.get(key, {})
+            title = m.get("title", key)
+            url = m.get("url", "")
+            rating_val = storage.GUIDE_RATINGS.get(key, {})
+            up = rating_val.get("up", 0) if isinstance(rating_val, dict) else 0
+            if url:
+                lines.append(f"  {i}. [{title}]({url}) — 👍 {up}")
+            else:
+                lines.append(f"  {i}. {title} — 👍 {up}")
+
+    # --- Статистика базы ---
+    total_cats = len(storage.GUIDES)
+    total_guides = sum(len(g) for g in storage.GUIDES.values())
+    total_users = len(storage.SEARCH_HISTORY)
+    total_week_searches = len(all_queries)
+
+    lines.append(f"\n📚 *База знаний:*")
+    lines.append(f"  Категорий: *{total_cats}* · Гайдов: *{total_guides}*")
+    lines.append(f"  Пользователей: *{total_users}* · Поисков за неделю: *{total_week_searches}*")
+
+    lines.append("\n _Обновляется каждую неделю. Используй /trending для топа!_")
 
     await safe_send(message, "\n".join(lines), disable_web_page_preview=True)
 
@@ -823,6 +901,7 @@ async def help_command(message: types.Message) -> None:
         " *Интерактивные функции:*\n"
         " /quiz — Тест знаний по Switch CFW (10 вопросов)\n"
         " /digest — Персональный дайджест гайдов\n"
+        " /week — Недельная статистика и топ поисков\n"
         " /compare `<A>` vs `<B>` — Сравнить два инструмента/CFW\n\n"
         " *Обратная связь:*\n"
         "/feedback `<текст>` — Предложить новый гайд\n\n"
