@@ -4,7 +4,6 @@ import hashlib
 import logging
 import random
 import time
-import uuid
 from difflib import SequenceMatcher
 
 from aiogram import Bot, F, Router, types
@@ -57,6 +56,39 @@ def _cleanup_dialog_ctx() -> None:
         for k in oldest_keys:
             DIALOG_CTX.pop(k, None)
             DIALOG_CTX_TIME.pop(k, None)
+
+
+def _compute_ratings() -> tuple:
+    """Parse GUIDE_RATINGS into (scores, meta) dicts.
+
+    scores: {guide_key: net_score}  — only guides with at least one vote
+    meta:   {guide_key: {title, url, category}}
+    """
+    scores: dict = {}
+    meta: dict = {}
+    for key, val in storage.GUIDE_RATINGS.items():
+        if key.startswith("_meta_"):
+            meta[key[len("_meta_"):]] = val
+        elif isinstance(val, dict):
+            up = val.get("up", 0)
+            down = val.get("down", 0)
+            if up + down > 0:
+                scores[key] = up - down
+    return scores, meta
+
+
+async def _register_guide_meta(guide: dict) -> str:
+    """Ensure guide metadata exists in GUIDE_RATINGS; return guide_key."""
+    guide_key = build_guide_key(guide["url"])
+    meta_key = f"_meta_{guide_key}"
+    if meta_key not in storage.GUIDE_RATINGS:
+        storage.GUIDE_RATINGS[meta_key] = {
+            "title": guide["title"],
+            "url": guide["url"],
+            "category": guide["category"],
+        }
+        await storage.save_ratings()
+    return guide_key
 
 
 
@@ -112,13 +144,7 @@ async def _perform_search(message: types.Message, query: str) -> None:
 
     best, best_score = results[0]
     if best_score >= 75:
-        guide_key = build_guide_key(best["url"])
-        meta_key = f"_meta_{guide_key}"
-        if meta_key not in storage.GUIDE_RATINGS:
-            storage.GUIDE_RATINGS[meta_key] = {
-                "title": best["title"], "url": best["url"], "category": best["category"],
-            }
-            await storage.save_ratings()
+        guide_key = await _register_guide_meta(best)
         await message.reply(
             f" Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
@@ -199,13 +225,7 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
     if best_score >= 75:
         # High-confidence local hit — show it directly (fast path)
         best = results[0][0]
-        guide_key = build_guide_key(best["url"])
-        meta_key = f"_meta_{guide_key}"
-        if meta_key not in storage.GUIDE_RATINGS:
-            storage.GUIDE_RATINGS[meta_key] = {
-                "title": best["title"], "url": best["url"], "category": best["category"],
-            }
-            await storage.save_ratings()
+        guide_key = await _register_guide_meta(best)
         await message.reply(
             f" Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
@@ -553,18 +573,7 @@ async def trending_guides(message: types.Message) -> None:
         await message.reply(" Пока нет оценок. Оценивай гайды кнопками под результатами поиска!")
         return
 
-    scores: dict = {}
-    meta: dict = {}
-    for key, val in storage.GUIDE_RATINGS.items():
-        if key.startswith("_meta_"):
-            guide_key = key[len("_meta_"):]
-            meta[guide_key] = val
-        elif isinstance(val, dict):
-            up = val.get("up", 0)
-            down = val.get("down", 0)
-            if up + down > 0:
-                scores[key] = up - down
-
+    scores, meta = _compute_ratings()
     if not scores:
         await message.reply(" Пока нет оценок. Оценивай гайды кнопками под результатами поиска!")
         return
@@ -627,17 +636,7 @@ async def digest_command(message: types.Message) -> None:
         lines.append("\n _Поисковая история пуста — попробуйте /guide_")
 
     # --- Топ-3 трендовых гайда по оценкам ---
-    scores: dict = {}
-    meta: dict = {}
-    for key, val in storage.GUIDE_RATINGS.items():
-        if key.startswith("_meta_"):
-            meta[key[len("_meta_"):]] = val
-        elif isinstance(val, dict):
-            up = val.get("up", 0)
-            down = val.get("down", 0)
-            if up + down > 0:
-                scores[key] = up - down
-
+    scores, meta = _compute_ratings()
     if scores:
         top3 = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:3]
         lines.append("\n🔥 *Трендовые гайды:*")
