@@ -10,7 +10,7 @@ from aiogram.filters import Command, CommandObject
 from .. import storage
 from ..config import ADMIN_IDS, GITHUB_REPO, SYNC_INTERVAL_SECONDS
 from ..helpers import safe_send
-from ..nlp import invalidate_index
+from ..nlp import invalidate_index, warm_index
 from ..services.sync import sync_sources
 
 router = Router()
@@ -57,6 +57,7 @@ async def admin_help(message: types.Message) -> None:
         " /yt\\_set\\_limit `<N>` — Лимит видео\n\n"
         " *Система:*\n"
         " /status — Статус бота\n"
+        " /reload\\_guides — Перезагрузить guides.json\n"
         " /restart\\_polling — Сброс webhook\n"
     )
     await message.reply(text, parse_mode="Markdown")
@@ -331,6 +332,24 @@ async def yt_set_limit(message: types.Message, command: CommandObject) -> None:
     storage.SETTINGS["yt_keep_limit"] = storage.YT_KEEP_LIMIT
     await storage.save_settings()
     await message.reply(f" Новый лимит: {storage.YT_KEEP_LIMIT}")
+
+
+@router.message(Command("reload_guides"))
+@_require_admin
+async def reload_guides_cmd(message: types.Message) -> None:
+    """Reload guides.json from disk at runtime without restarting the bot."""
+    await message.reply(" Перезагружаю guides.json ...")
+    try:
+        total = await storage.reload_guides()
+        invalidate_index()
+        warm_index()
+        await message.reply(
+            f" guides.json перезагружен.\n"
+            f" Категорий: {len(storage.GUIDES)}, гайдов: {total}"
+        )
+    except Exception as e:
+        logging.exception("reload_guides failed: %s", e)
+        await message.reply(f" Ошибка при перезагрузке guides.json: {e}")
 
 
 @router.message(Command("restart_polling"))

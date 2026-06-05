@@ -81,6 +81,18 @@ async def save_guides() -> None:
         await asyncio.to_thread(_atomic_write, GUIDES_FILE, GUIDES)
 
 
+async def reload_guides() -> int:
+    """Reload guides.json into memory at runtime without restart.
+
+    Returns the total number of guides after reload.
+    """
+    async with GUIDES_LOCK:
+        fresh = await asyncio.to_thread(load_guides)
+        GUIDES.clear()
+        GUIDES.update(fresh)
+    return sum(len(v) for v in GUIDES.values())
+
+
 def backup_guides() -> None:
     import datetime, shutil
     try:

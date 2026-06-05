@@ -11,13 +11,13 @@ from aiogram.types import BotCommand
 from aiohttp import web
 
 from bot import storage
-from bot.config import ADMIN_IDS, BOT_TOKEN, SYNC_INTERVAL_SECONDS
+from bot.config import BOT_TOKEN
 from bot.handlers import admin_router, callbacks_router, inline_router, quiz_router, user_router
-from bot.handlers.user import _cleanup_dialog_ctx
 from bot.middleware import ThrottlingMiddleware
-from bot.nlp import invalidate_index, warm_index
+from bot.nlp import warm_index
 from bot.services import ai, github
-from bot.services.sync import close_ddg_session, resolve_auto_guides_links, sync_sources
+from bot.services.sync import close_ddg_session
+from bot.tasks import start_background_tasks
 
 
 async def _health_server() -> None:
@@ -135,59 +135,8 @@ async def main() -> None:
     warm_index()
     logging.info("BM25 index pre-warmed (%d docs)", total)
 
-    async def _notify_admins(text: str) -> None:
-        for aid in ADMIN_IDS:
-            try:
-                await bot.send_message(aid, text)
-            except Exception:
-                pass
-
-    async def background_sync() -> None:
-        await asyncio.sleep(5)
-        consecutive_failures = 0
-        while True:
-            try:
-                summary = await sync_sources()
-                invalidate_index()
-                logging.info("Background sync: %s", summary)
-                if consecutive_failures > 0:
-                    consecutive_failures = 0
-                    await _notify_admins("✅ Синхронизация восстановлена.")
-            except Exception as e:
-                consecutive_failures += 1
-                logging.exception("Background sync failed")
-                # Уведомляем при первой ошибке и каждые 5 последующих
-                if consecutive_failures == 1 or consecutive_failures % 5 == 0:
-                    await _notify_admins(
-                        f"⚠️ Ошибка фоновой синхронизации (попытка {consecutive_failures}): {e}"
-                    )
-            await asyncio.sleep(SYNC_INTERVAL_SECONDS)
-
-    async def background_resolver() -> None:
-        await asyncio.sleep(10)
-        while True:
-            try:
-                await resolve_auto_guides_links(bot)
-            except Exception:
-                logging.exception("Background resolver failed")
-            await asyncio.sleep(max(600, SYNC_INTERVAL_SECONDS))
-
-    # Background sync -- только если есть источники для синхронизации.
     # Health server уже стартовал в начале main(), не дублируем.
-    if (storage.YT_CHANNELS and any(storage.YT_CHANNELS)) or os.environ.get("GITHUB_REPO"):
-        asyncio.create_task(background_sync())
-
-    asyncio.create_task(background_resolver())
-
-    async def background_ctx_cleanup() -> None:
-        while True:
-            await asyncio.sleep(600)
-            try:
-                _cleanup_dialog_ctx()
-            except Exception:
-                logging.exception("DIALOG_CTX cleanup failed")
-
-    asyncio.create_task(background_ctx_cleanup())
+    start_background_tasks(bot)
 
     # Railway rolling-deploy: новый контейнер стартует ДО того как
     # старый полностью отключился. Оба полят getUpdates -> Telegram
@@ -195,7 +144,7 @@ async def main() -> None:
     # Ждём 15с (Telegram long-poll timeout 25-30с) -- к этому моменту
     # любой in-flight getUpdates от старого контейнера истечёт по timeout'у,
     # либо SIGTERM убьёт его.
-    startup_delay = int(os.environ.get("STARTUP_DELAY_SECONDS", "15"))
+    startup_delay = int(os.environ.get("STARTUP_DELAY_SECONDS", "0"))
     if startup_delay > 0:
         logging.info("Startup delay: %ds (waiting for any previous container to release getUpdates)", startup_delay)
         await asyncio.sleep(startup_delay)
