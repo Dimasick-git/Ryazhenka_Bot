@@ -4,7 +4,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from .. import storage
 from ..helpers import cat_cb, create_categories_keyboard, make_rating_keyboard
-from .user import DIALOG_CTX
+from .ctx import DIALOG_CTX
 
 router = Router()
 

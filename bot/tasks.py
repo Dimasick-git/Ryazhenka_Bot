@@ -7,7 +7,7 @@ from aiogram import Bot
 
 from . import storage
 from .config import ADMIN_IDS, SYNC_INTERVAL_SECONDS
-from .handlers.user import _cleanup_dialog_ctx
+from .handlers.ctx import _cleanup_dialog_ctx
 from .nlp import invalidate_index
 from .services.sync import resolve_auto_guides_links, sync_sources
 

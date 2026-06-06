@@ -12,7 +12,17 @@ from aiohttp import web
 
 from bot import storage
 from bot.config import BOT_TOKEN
-from bot.handlers import admin_router, callbacks_router, inline_router, quiz_router, user_router
+from bot.handlers import (
+    admin_router,
+    callbacks_router,
+    discovery_router,
+    info_router,
+    inline_router,
+    quiz_router,
+    search_router,
+    social_router,
+    user_router,
+)
 from bot.middleware import ThrottlingMiddleware
 from bot.nlp import warm_index
 from bot.services import ai, github
@@ -125,7 +135,10 @@ async def main() -> None:
     throttle = ThrottlingMiddleware()
     dp.message.middleware(throttle)
     dp.inline_query.middleware(throttle)
-    dp.include_router(user_router)
+    dp.include_router(search_router)
+    dp.include_router(discovery_router)
+    dp.include_router(social_router)
+    dp.include_router(info_router)
     dp.include_router(admin_router)
     dp.include_router(callbacks_router)
     dp.include_router(inline_router)

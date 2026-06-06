@@ -1,0 +1,390 @@
+"""Info and utility handlers: /start, /all, /stats, /help, /releases, /digest, /week, /compare, etc."""
+import asyncio
+import logging
+import random
+import time as _time
+from collections import Counter
+
+from aiogram import Router, types
+from aiogram.filters import Command, CommandObject
+
+from .. import storage
+from ..config import GITHUB_REPO
+from ..helpers import create_categories_keyboard, safe_send
+from ..nlp import search_guides
+from ..services.ai import ask_ai
+from ..services.github import fetch_github_repos
+from .discovery import compute_ratings
+
+router = Router()
+
+
+def _recommend_user() -> str:
+    if GITHUB_REPO and "/" in GITHUB_REPO:
+        return GITHUB_REPO.split("/")[0]
+    return "Dimasick-git"
+
+
+@router.message(Command("start"))
+async def start(message: types.Message) -> None:
+    total = sum(len(g) for g in storage.GUIDES.values())
+    await message.reply(
+        " *Ryazhenka Bot* — инженерный помощник по прошивке Nintendo Switch\n"
+        f"{'─' * 35}\n"
+        f" Загружено гайдов: *{total}* в *{len(storage.GUIDES)}* категориях\n\n"
+        " *Основные команды:*\n"
+        " /guide `<тема>` — найти гайд (fuzzy search)\n"
+        " /aiguide `<текст>` — умный поиск (BM25 + fuzzy)\n"
+        " /all — все категории\n"
+        " /help — полный список команд\n\n"
+        " *Выберите категорию ниже:*",
+        parse_mode="Markdown",
+        reply_markup=create_categories_keyboard(),
+    )
+
+
+@router.message(Command("all"))
+async def show_all(message: types.Message) -> None:
+    if not storage.GUIDES:
+        await message.reply(" База гайдов пуста ")
+        return
+    text = " *Все категории* :\n\n"
+    total = 0
+    for cat, guides in storage.GUIDES.items():
+        total += len(guides)
+        text += f"{cat} — {len(guides)} гайдов\n"
+    text += f"\n Всего: {total} гайдов в {len(storage.GUIDES)} категориях\n\n"
+    text += "Используйте /guide <название> для поиска или выберите категорию:"
+    await safe_send(message, text, reply_markup=create_categories_keyboard())
+
+
+@router.message(Command("stats"))
+async def guide_stats(message: types.Message) -> None:
+    if not storage.GUIDES:
+        await message.reply(" База гайдов пуста ")
+        return
+    total = sum(len(g) for g in storage.GUIDES.values())
+    sorted_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)
+    text = f" *Статистика базы гайдов*\n{'─' * 30}\n Всего: *{total}*\n Категорий: *{len(storage.GUIDES)}*\n\n*Топ категорий:*\n"
+    for cat, guides in sorted_cats[:8]:
+        bar = "█" * min(len(guides) // max(1, total // 20), 10)
+        text += f"  {cat} — {len(guides)} {bar}\n"
+    if len(sorted_cats) > 8:
+        text += f"  _...и ещё {len(sorted_cats) - 8} категорий_\n"
+    await message.reply(text, parse_mode="Markdown")
+
+
+@router.message(Command("recommend"))
+async def recommend_repos(message: types.Message) -> None:
+    user = _recommend_user()
+    await message.reply(f" Получаю публичные репозитории  {user}...")
+    repos = await fetch_github_repos(user, limit=20)
+    if not repos:
+        await message.reply(" Не удалось получить репозитории.")
+        return
+    text = f" Рекомендуемые репозитории  {user}:\n\n"
+    for name, url, desc in repos[:15]:
+        text += f"• [{name}]({url}) — {desc}\n"
+    await safe_send(message, text, disable_web_page_preview=True)
+
+
+@router.message(Command("history"))
+async def search_history_cmd(message: types.Message) -> None:
+    user_id = str(message.from_user.id)
+    history = storage.SEARCH_HISTORY.get(user_id, [])
+    if not history:
+        await message.reply(
+            " *История поиска пуста.*\n\nИспользуй /guide или /aiguide чтобы искать гайды.",
+            parse_mode="Markdown",
+        )
+        return
+    text = " *Ваши последние запросы:*\n\n"
+    for i, entry in enumerate(reversed(history[-10:]), 1):
+        q = entry.get("query", "")
+        text += f"{i}. `/guide {q}`\n"
+    text += "\nНажмите на запрос чтобы повторить поиск."
+    await message.reply(text, parse_mode="Markdown")
+
+
+@router.message(Command("releases"))
+async def releases_command(message: types.Message) -> None:
+    thinking_msg = await message.reply("⏳ Загружаю последние релизы Ryazhenka...")
+
+    try:
+        from ..services.github import fetch_ryazha_releases
+        releases = await fetch_ryazha_releases()
+    except Exception as e:
+        logging.error("Failed to fetch releases: %s", e)
+        await thinking_msg.edit_text("⚠️ Не удалось загрузить релизы. Попробуйте позже.")
+        return
+
+    if not releases:
+        await thinking_msg.edit_text("ℹ️ Релизы пока не найдены.")
+        return
+
+    lines = ["🚀 *Последние релизы Ryazhenka*\n" + "─" * 35]
+
+    for repo_full, release in releases[:10]:
+        repo_name = repo_full.split("/")[-1]
+        tag = release.get("tag", "—")
+        date = release.get("date", "")
+        url = release.get("url", "")
+        prerelease = release.get("prerelease", False)
+
+        pre_mark = " _[pre]_" if prerelease else ""
+        lines.append(f"\n*{repo_name}*{pre_mark}")
+        if url:
+            lines.append(f"  [{tag}]({url}) · `{date}`")
+        else:
+            lines.append(f"  {tag} · `{date}`")
+
+        for asset in release.get("assets", []):
+            name = asset.get("name", "")
+            dl_url = asset.get("url", "")
+            size = asset.get("size", 0)
+            if not name or not dl_url:
+                continue
+            if name.endswith((".nro", ".zip", ".7z")):
+                size_mb = size / (1024 * 1024) if size else 0
+                size_str = f" `{size_mb:.1f}MB`" if size_mb > 0 else ""
+                lines.append(f"  📦 [{name}]({dl_url}){size_str}")
+                break
+
+    lines.append("\n_Данные кэшируются на 1 час_")
+
+    await thinking_msg.edit_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+    )
+
+
+@router.message(Command("digest"))
+async def digest_command(message: types.Message) -> None:
+    """Персональный дайджест: последние поиски + AI-рекомендации + топ гайдов."""
+    user_id = str(message.from_user.id)
+
+    lines = [" *Ваш персональный дайджест*\n" + "─" * 35]
+
+    history = storage.SEARCH_HISTORY.get(user_id, [])
+    recent_queries = []
+    if history:
+        lines.append("\n *Ваши последние поиски:*")
+        for entry in list(reversed(history))[:5]:
+            q = entry.get("query", "")
+            if q:
+                lines.append(f"  `/guide {q}`")
+                recent_queries.append(q)
+    else:
+        lines.append("\n _Поисковая история пуста — попробуйте /guide_")
+
+    if recent_queries:
+        try:
+            rec_prompt = (
+                f"Пользователь искал в боте по Nintendo Switch CFW: {', '.join(recent_queries[:3])}.\n"
+                "На основе этих тем порекомендуй 2-3 смежных темы которые могут быть полезны "
+                "для изучения. Формат: короткий список тем (1 строка каждая). "
+                "Без введения, только темы."
+            )
+            ai_rec = await ask_ai(rec_prompt)
+            if ai_rec:
+                lines.append("\n🤖 *AI рекомендует изучить:*")
+                for rec_line in ai_rec.strip().split("\n")[:3]:
+                    rec_line = rec_line.strip().lstrip("•-– ").strip()
+                    if rec_line:
+                        lines.append(f"  • `/guide {rec_line}`")
+        except Exception:
+            pass
+
+    scores, meta = compute_ratings()
+    if scores:
+        top3 = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:3]
+        lines.append("\n🔥 *Трендовые гайды:*")
+        for key, sc in top3:
+            m = meta.get(key, {})
+            title = m.get("title", key)
+            url = m.get("url", "")
+            rating_val = storage.GUIDE_RATINGS.get(key, {})
+            up = rating_val.get("up", 0) if isinstance(rating_val, dict) else 0
+            down = rating_val.get("down", 0) if isinstance(rating_val, dict) else 0
+            if url:
+                lines.append(f"  [{title}]({url}) — 👍{up} 👎{down}")
+            else:
+                lines.append(f"  {title} — 👍{up} 👎{down}")
+    else:
+        lines.append("\n _Нет оценённых гайдов — оцени любой через /guide_")
+
+    all_cats = [c for c, g in storage.GUIDES.items() if g]
+    if len(all_cats) >= 2:
+        chosen_cats = random.sample(all_cats, 2)
+        lines.append("\n *Случайные гайды для вас:*")
+        for cat in chosen_cats:
+            entries = [(t, u) for t, u in storage.GUIDES[cat].items() if u]
+            if entries:
+                title, url = random.choice(entries)
+                lines.append(f"  [{title}]({url}) — _{cat}_")
+    elif all_cats:
+        entries = [(t, u) for t, u in storage.GUIDES[all_cats[0]].items() if u]
+        if entries:
+            lines.append("\n *Случайный гайд:*")
+            title, url = random.choice(entries)
+            lines.append(f"  [{title}]({url})")
+
+    lines.append("\n _Используй /quiz чтобы проверить знания CFW!_")
+
+    await safe_send(message, "\n".join(lines), disable_web_page_preview=True)
+
+
+@router.message(Command("week"))
+async def week_command(message: types.Message) -> None:
+    """Недельная статистика: топ поисков, лучшие гайды, активность."""
+    lines = ["📊 *Недельная активность*\n" + "─" * 35]
+
+    week_ago = _time.time() - 7 * 86400
+    all_queries: list = []
+    for uid, entries in storage.SEARCH_HISTORY.items():
+        for entry in entries:
+            if entry.get("ts", 0) >= week_ago:
+                q = entry.get("query", "").strip()
+                if q:
+                    all_queries.append(q.lower())
+
+    if all_queries:
+        top_queries = Counter(all_queries).most_common(5)
+        lines.append("\n🔍 *Топ поисков за неделю:*")
+        for i, (q, cnt) in enumerate(top_queries, 1):
+            lines.append(f"  {i}. `{q}` — {cnt} раз{'а' if cnt > 1 else ''}")
+    else:
+        lines.append("\n _Нет данных о поисках за последнюю неделю_")
+
+    scores, meta = compute_ratings()
+    if scores:
+        top5 = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:5]
+        lines.append("\n⭐ *Лучшие гайды по оценкам:*")
+        for i, (key, sc) in enumerate(top5, 1):
+            m = meta.get(key, {})
+            title = m.get("title", key)
+            url = m.get("url", "")
+            rating_val = storage.GUIDE_RATINGS.get(key, {})
+            up = rating_val.get("up", 0) if isinstance(rating_val, dict) else 0
+            if url:
+                lines.append(f"  {i}. [{title}]({url}) — 👍 {up}")
+            else:
+                lines.append(f"  {i}. {title} — 👍 {up}")
+
+    total_cats = len(storage.GUIDES)
+    total_guides = sum(len(g) for g in storage.GUIDES.values())
+    total_users = len(storage.SEARCH_HISTORY)
+    total_week_searches = len(all_queries)
+
+    lines.append(f"\n📚 *База знаний:*")
+    lines.append(f"  Категорий: *{total_cats}* · Гайдов: *{total_guides}*")
+    lines.append(f"  Пользователей: *{total_users}* · Поисков за неделю: *{total_week_searches}*")
+
+    lines.append("\n _Обновляется каждую неделю. Используй /trending для топа!_")
+
+    await safe_send(message, "\n".join(lines), disable_web_page_preview=True)
+
+
+@router.message(Command("compare"))
+async def compare_command(message: types.Message, command: CommandObject) -> None:
+    """Сравнивает два инструмента/CFW с помощью AI."""
+    args = (command.args or "").strip()
+    if not args:
+        await message.reply(
+            " *Сравнение инструментов Switch CFW*\n\n"
+            "Использование:\n"
+            "`/compare emuNAND vs sysNAND`\n"
+            "`/compare Atmosphere и Hekate`\n"
+            "`/compare Tinfoil, Goldleaf`\n\n"
+            "Разделители: `vs`, `и`, `,`",
+            parse_mode="Markdown",
+        )
+        return
+
+    topic1: str = ""
+    topic2: str = ""
+    for sep in (" vs ", " и ", ","):
+        if sep in args:
+            parts = args.split(sep, 1)
+            topic1 = parts[0].strip()
+            topic2 = parts[1].strip()
+            break
+
+    if not topic1 or not topic2:
+        await message.reply(
+            f" Не удалось разобрать два инструмента из: «{args}»\n\n"
+            "Пример: `/compare emuNAND vs sysNAND`",
+            parse_mode="Markdown",
+        )
+        return
+
+    thinking_msg = await message.reply(f" Сравниваю *{topic1}* и *{topic2}*...", parse_mode="Markdown")
+
+    prompt = (
+        f"Сравни два инструмента/понятия Nintendo Switch CFW: «{topic1}» и «{topic2}».\n"
+        "Структура ответа:\n"
+        f"1. Что такое {topic1} (1-2 предложения)\n"
+        f"2. Что такое {topic2} (1-2 предложения)\n"
+        "3. Ключевые отличия (3-5 пунктов)\n"
+        "4. Когда использовать каждый\n"
+        "Отвечай по-русски, кратко и практично."
+    )
+
+    ai_answer = await ask_ai(prompt)
+
+    if ai_answer:
+        reply_text = (
+            f" *Сравнение: {topic1} vs {topic2}*\n"
+            f"{'─' * 35}\n\n"
+            f"{ai_answer}"
+        )
+        await thinking_msg.edit_text(reply_text, parse_mode="Markdown")
+    else:
+        await thinking_msg.edit_text(
+            " AI временно недоступен.\n"
+            "Попробуй:\n"
+            f"• `/ask что такое {topic1}`\n"
+            f"• `/ask что такое {topic2}`",
+            parse_mode="Markdown",
+        )
+
+
+@router.message(Command("help"))
+async def help_command(message: types.Message) -> None:
+    text = (
+        " *Полный список команд* \n"
+        f"{'─' * 35}\n"
+        " *Основные:*\n"
+        " /start — Приветствие и быстрые ссылки\n"
+        " /all — Показать все категории\n"
+        " /guide `<тема>` — Найти гайд (fuzzy + BM25)\n"
+        " /aiguide `<текст>` — Умный поиск + AI если гайд не найден\n"
+        " /ask `<вопрос>` — Задать вопрос AI по Switch CFW\n"
+        " /random `[категория]` — Случайный гайд\n"
+        "🆕 /new — Последние добавленные гайды\n"
+        " /stats — Статистика базы гайдов\n"
+        " /top — Топ категорий\n"
+        " /category `<название>` — Гайды по категории (с пагинацией)\n"
+        " /cat `<название>` — Псевдоним /category\n"
+        "🔥 /trending — Топ гайдов по оценкам\n"
+        " /history — Ваши последние поисковые запросы\n"
+        " /recommend — Репозитории автора\n"
+        "🚀 /releases — Последние релизы Ryazhenka\n\n"
+        "⭐ *Избранное:*\n"
+        "/fav — Показать избранное\n"
+        "/fav add `<тема>` — Добавить гайд\n"
+        "/fav remove `<номер>` — Удалить\n\n"
+        " *Интерактивные функции:*\n"
+        " /quiz — Тест знаний по Switch CFW (10 вопросов)\n"
+        " /digest — Персональный дайджест гайдов\n"
+        " /week — Недельная статистика и топ поисков\n"
+        " /compare `<A>` vs `<B>` — Сравнить два инструмента/CFW\n\n"
+        " *Обратная связь:*\n"
+        "/feedback `<текст>` — Предложить новый гайд\n\n"
+        " *Inline-режим:*\n"
+        "Напиши `@botname запрос` в любом чате!\n\n"
+        " *Админ-команды:*\n"
+        "/sync, /add\\_guide, /remove\\_guide, /edit\\_guide, /list\\_guides, /admin\\_help\n"
+    )
+    await message.reply(text, parse_mode="Markdown")
