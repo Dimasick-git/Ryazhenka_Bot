@@ -30,6 +30,9 @@ _RYAZHA_REPOS = [
     "Dimasick-git/Mission-Control",
     "Dimasick-git/libryazhahand",
     "Dimasick-git/RyazhaTune",
+    "Dimasick-git/Ryazha-Status-Monitor",
+    "Dimasick-git/Ryazha-cheker",
+    "Dimasick-git/RyazhaAI",
 ]
 
 
