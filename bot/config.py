@@ -1,4 +1,5 @@
 import os
+import re
 
 try:
     from dotenv import load_dotenv
@@ -7,6 +8,12 @@ except ImportError:
     pass
 
 BOT_TOKEN: str = os.environ.get("BOT_TOKEN", "")
+
+# Telegram bot token format: <bot_id>:<hash> where bot_id is numeric digits
+_TOKEN_RE = re.compile(r"^\d+:[A-Za-z0-9_-]{35,}$")
+
+def is_valid_token(token: str) -> bool:
+    return bool(token and _TOKEN_RE.match(token))
 
 try:
     ADMIN_IDS: list[int] = [int(x) for x in os.environ.get("ADMIN_IDS", "").split(",") if x.strip()]

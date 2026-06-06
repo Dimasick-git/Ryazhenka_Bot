@@ -1,4 +1,5 @@
 """Search engine: BM25 + fuzzy matching + NLP preprocessing."""
+import asyncio
 import json
 import logging
 import math
@@ -262,6 +263,13 @@ def ngrams(tokens: list, n: int = 2) -> list:
 # ── BM25 index ────────────────────────────────────────────────
 BM25_INDEX: Optional[dict] = None
 _BM25_LOCK = threading.Lock()
+_BM25_ASYNC_LOCK: asyncio.Lock | None = None
+
+def _get_async_lock() -> asyncio.Lock:
+    global _BM25_ASYNC_LOCK
+    if _BM25_ASYNC_LOCK is None:
+        _BM25_ASYNC_LOCK = asyncio.Lock()
+    return _BM25_ASYNC_LOCK
 
 
 def build_bm25_index() -> dict:
@@ -379,9 +387,9 @@ def invalidate_index() -> None:
 async def rebuild_bm25_index_async() -> None:
     """Rebuild BM25 index under lock to prevent simultaneous rebuilds."""
     global BM25_INDEX
-    import asyncio
-    if BM25_INDEX is None:
-        BM25_INDEX = await asyncio.to_thread(build_bm25_index)
+    async with _get_async_lock():
+        if BM25_INDEX is None:
+            BM25_INDEX = await asyncio.to_thread(build_bm25_index)
 
 
 def warm_index() -> None:
