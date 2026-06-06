@@ -318,9 +318,9 @@ def search_guides(query: str, top_n: int = 10) -> list:
             if BM25_INDEX is None:
                 BM25_INDEX = build_bm25_index()
 
-    q_terms = apply_synonyms(tokenize(query))
+    q_base_terms = apply_synonyms(tokenize(query))
     q_expanded: list = []
-    for t in q_terms:
+    for t in q_base_terms:
         q_expanded.append(t)
         q_expanded.extend(generate_variants(t))
     q_terms = q_expanded
@@ -372,6 +372,21 @@ def search_guides(query: str, top_n: int = 10) -> list:
                 score = score * 0.6 + bm_norm * 0.4
             else:
                 score = max(score, bm_norm)
+
+        # Term coverage bonus: reward titles that contain multiple query terms.
+        # This lifts guides that match all words of a multi-word query above
+        # those that match only one term with a high fuzzy score.
+        if q_base_terms and score >= 20:
+            title_tokens = set(apply_synonyms(tokenize(title)))
+            title_tokens.update(simple_stem(t) for t in title_tokens)
+            matched = sum(
+                1 for t in q_base_terms
+                if t in title_tokens or simple_stem(t) in title_tokens
+            )
+            recall = matched / len(q_base_terms)
+            if recall > 0:
+                score += recall * 12.0
+
         results.append(({"title": title, "category": cat, "url": url}, score))
 
     results.sort(key=lambda x: x[1], reverse=True)

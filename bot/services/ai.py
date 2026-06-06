@@ -133,7 +133,7 @@ async def ask_ai(query: str, guide_context: str = "") -> Optional[str]:
     if not ANTHROPIC_API_KEY or not _anthropic_available:
         return None
 
-    cache_key = hashlib.sha256(f"{query}||{guide_context}".encode()).hexdigest()[:24]
+    cache_key = hashlib.sha256(f"{AI_MODEL}:{query}||{guide_context}".encode()).hexdigest()[:24]
     cached = _get_cached(cache_key)
     if cached:
         log.debug("AI cache hit for query: %s", query[:40])
