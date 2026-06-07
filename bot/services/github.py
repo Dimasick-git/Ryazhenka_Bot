@@ -33,6 +33,10 @@ _RYAZHA_REPOS = [
     "Dimasick-git/Ryazha-Status-Monitor",
     "Dimasick-git/Ryazha-cheker",
     "Dimasick-git/RyazhaAI",
+    "Dimasick-git/Atmosphere-RYZ",
+    "Dimasick-git/Hekate",
+    "Dimasick-git/SwitchWave",
+    "Dimasick-git/ReverseNX-RT",
 ]
 
 
