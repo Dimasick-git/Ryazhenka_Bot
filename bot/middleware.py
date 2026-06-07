@@ -12,6 +12,7 @@ _LIMITS: Dict[str, tuple] = {
     "aiguide":   (10,  2),   # heavy BM25 search: 2 calls per 10s
     "guide":     (5,   5),
     "search":    (5,   5),
+    "inline":    (3,   4),   # inline mode: 4 queries per 3s — tighter to prevent API spam
     "feedback":  (60,  3),   # anti-spam: 3 per minute
     "random":    (5,   5),
     "recommend": (30,  2),   # GitHub API call
@@ -55,7 +56,7 @@ class ThrottlingMiddleware(BaseMiddleware):
     ) -> Any:
         if isinstance(event, InlineQuery):
             user_id = str(event.from_user.id) if event.from_user else "anon"
-            window, max_calls = _get_bucket("search")
+            window, max_calls = _get_bucket("inline")
             now = time.monotonic()
             _maybe_cleanup(now)
             if len(_COOLDOWNS) >= _MAX_USERS and user_id not in _COOLDOWNS:

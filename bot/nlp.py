@@ -6,9 +6,30 @@ import math
 import os
 import re
 import threading
-from typing import Optional
+from typing import Any, Optional
 
 from . import storage
+
+# ── Russian morphology (pymorphy2 — optional) ─────────────────
+try:
+    import pymorphy2 as _pymorphy2
+
+    _MORPH: Optional[Any] = None
+    _MORPH_INIT_LOCK = threading.Lock()
+
+    def _get_morph() -> Any:
+        global _MORPH
+        if _MORPH is None:
+            with _MORPH_INIT_LOCK:
+                if _MORPH is None:
+                    _MORPH = _pymorphy2.MorphAnalyzer()
+        return _MORPH
+
+    _HAVE_PYMORPHY2 = True
+    logging.getLogger(__name__).debug("pymorphy2 available — Russian lemmatization enabled")
+except ImportError:
+    _HAVE_PYMORPHY2 = False
+    logging.getLogger(__name__).warning("pymorphy2 not installed — using simple suffix stemmer for Russian")
 
 # ── Levenshtein ───────────────────────────────────────────────
 try:
@@ -152,6 +173,27 @@ def simple_stem(token: str) -> str:
     return t
 
 
+_RU_WORD_RE = re.compile(r"^[а-яё]+$")
+
+
+def lemmatize(token: str) -> str:
+    """Return the canonical (lemma) form of a token.
+
+    Uses pymorphy2 for Russian words when available, giving proper morphological
+    normalization (e.g. «установки» → «установка», «запускать» → «запускать»).
+    Falls back to simple_stem for English or when pymorphy2 is not installed.
+    """
+    t = token.lower()
+    if _HAVE_PYMORPHY2 and len(t) > 2 and _RU_WORD_RE.match(t):
+        try:
+            parsed = _get_morph().parse(t)
+            if parsed:
+                return parsed[0].normal_form
+        except Exception:
+            pass
+    return simple_stem(t)
+
+
 def fix_keyboard_layout(word: str) -> str:
     try:
         ru = word.translate(_EN_TO_RU)
@@ -201,7 +243,7 @@ def generate_variants(token: str) -> list:
             new.add(v.replace(" ", "-"))
         elif len(v) > 4 and v.startswith("emu"):
             new.add("emu " + v[3:])
-        new.add(simple_stem(v))
+        new.add(lemmatize(v))
     variants.update(new)
     return [v for v in variants if v and v not in STOP_WORDS]
 
@@ -236,7 +278,9 @@ def build_bm25_index() -> dict:
         if isinstance(items, dict):
             for title, url in items.items():
                 docs.append({"title": title, "category": cat, "url": url})
-                tokens = apply_synonyms(tokenize(title))
+                raw_tokens = apply_synonyms(tokenize(title))
+                # Lemmatize so «установки» and «установка» map to the same index term.
+                tokens = [lemmatize(t) for t in raw_tokens]
                 tf = term_freq(tokens)
                 doc_tfs.append(tf)
                 doc_lens.append(len(tokens))
@@ -273,7 +317,9 @@ def search_guides(query: str, top_n: int = 10) -> list:
             if BM25_INDEX is None:
                 BM25_INDEX = build_bm25_index()
 
-    q_base_terms = apply_synonyms(tokenize(query))
+    raw_base_terms = apply_synonyms(tokenize(query))
+    # Lemmatize query terms to match the lemmatized index.
+    q_base_terms = [lemmatize(t) for t in raw_base_terms]
     q_expanded: list = []
     for t in q_base_terms:
         q_expanded.append(t)
@@ -333,10 +379,11 @@ def search_guides(query: str, top_n: int = 10) -> list:
         # those that match only one term with a high fuzzy score.
         if q_base_terms and score >= 20:
             title_tokens = set(apply_synonyms(tokenize(title)))
-            title_tokens.update(simple_stem(t) for t in title_tokens)
+            # Lemmatize title tokens for morphologically-aware coverage check.
+            title_tokens.update(lemmatize(t) for t in list(title_tokens))
             matched = sum(
                 1 for t in q_base_terms
-                if t in title_tokens or simple_stem(t) in title_tokens
+                if t in title_tokens or lemmatize(t) in title_tokens
             )
             recall = matched / len(q_base_terms)
             if recall > 0:

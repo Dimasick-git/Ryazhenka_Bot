@@ -1,9 +1,36 @@
 """Entry point for Ryazhenka Bot."""
 import asyncio
+import json as _json
 import logging
 import os
 import re
 import sys
+
+
+class _JsonLogFormatter(logging.Formatter):
+    """Emit each log record as a single JSON line for Railway log aggregation."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        obj: dict = {
+            "ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+            "level": record.levelname,
+            "logger": record.name,
+            "msg": record.getMessage(),
+        }
+        if record.exc_info:
+            obj["exc"] = self.formatException(record.exc_info)
+        if record.stack_info:
+            obj["stack"] = self.formatStack(record.stack_info)
+        return _json.dumps(obj, ensure_ascii=False)
+
+
+def _setup_logging() -> None:
+    handler = logging.StreamHandler()
+    handler.setFormatter(_JsonLogFormatter())
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    root.handlers.clear()
+    root.addHandler(handler)
 
 from aiogram import Bot, Dispatcher
 from aiogram.exceptions import TelegramUnauthorizedError
@@ -69,7 +96,7 @@ async def _health_server() -> None:
 
 
 async def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    _setup_logging()
 
     # ВАЖНО: health server стартует ПЕРВЫМ, до всех валидаций. Если
     # BOT_TOKEN невалидный -- Railway health check всё равно проходит,
