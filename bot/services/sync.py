@@ -3,12 +3,46 @@ import asyncio
 import logging
 import re
 import urllib.parse
+from typing import Callable, TypeVar
 
 import aiohttp
 
 from .. import storage
 from ..config import ADMIN_IDS, ALLOWED_DOMAINS, GITHUB_REPO
 from . import github, youtube
+
+_T = TypeVar("_T")
+
+
+async def _retry_async(
+    fn: Callable,
+    *args,
+    retries: int = 3,
+    base_delay: float = 2.0,
+    label: str = "",
+    **kwargs,
+):
+    """Call an async function with exponential-backoff retry on exception.
+
+    Returns the function's return value, or re-raises the last exception
+    after all attempts are exhausted.
+    """
+    delay = base_delay
+    for attempt in range(1, retries + 1):
+        try:
+            return await fn(*args, **kwargs)
+        except Exception as exc:
+            if attempt == retries:
+                logging.warning(
+                    "%s failed after %d attempt(s): %s", label or fn.__name__, retries, exc
+                )
+                raise
+            logging.debug(
+                "%s attempt %d/%d failed (%s). Retrying in %.1fs.",
+                label or fn.__name__, attempt, retries, exc, delay,
+            )
+            await asyncio.sleep(delay)
+            delay *= 2
 
 _DATE_RE = re.compile(r"\[(\d{4}-\d{2}-\d{2})\]")
 _DDG_TIMEOUT = aiohttp.ClientTimeout(total=30)
@@ -122,11 +156,24 @@ async def sync_sources() -> dict:
             for ch in storage.YT_CHANNELS:
                 cid = ch
                 if not cid.startswith("UC"):
-                    resolved = await youtube.resolve_channel_id(ch)
+                    try:
+                        resolved = await _retry_async(
+                            youtube.resolve_channel_id, ch,
+                            label=f"resolve_channel_id({ch!r})",
+                        )
+                    except Exception:
+                        resolved = None
                     if resolved:
                         cid = resolved
                 logging.info("Fetching YouTube for channel '%s' resolved to '%s'", ch, cid)
-                channel_title, yt_entries = await youtube.fetch_youtube_videos(cid) if cid else (None, [])
+                try:
+                    channel_title, yt_entries = await _retry_async(
+                        youtube.fetch_youtube_videos, cid,
+                        label=f"fetch_youtube_videos({cid!r})",
+                    ) if cid else (None, [])
+                except Exception as e:
+                    logging.warning("YouTube fetch failed for channel %s after retries: %s", cid, e)
+                    channel_title, yt_entries = None, []
                 logging.info("Fetched %d entries from YouTube channel %s (%s)", len(yt_entries), cid, channel_title)
                 # Filter out entries with invalid URLs
                 yt_entries = [(t, u) for t, u in yt_entries if _is_valid_url(u)]
@@ -171,13 +218,16 @@ async def sync_sources() -> dict:
 
         # GitHub releases
         try:
-            gh_entries = await github.fetch_github_releases(GITHUB_REPO) if GITHUB_REPO else []
+            gh_entries = await _retry_async(
+                github.fetch_github_releases, GITHUB_REPO,
+                label=f"fetch_github_releases({GITHUB_REPO!r})",
+            ) if GITHUB_REPO else []
             # Filter out entries with invalid URLs
             gh_entries = [(t, u) for t, u in gh_entries if _is_valid_url(u)]
             if gh_entries:
                 summary["github_added"] = storage.merge_entries_into_category(" Прошивка и CFW", gh_entries)
         except Exception as e:
-            logging.warning("GitHub sync failed: %s", e)
+            logging.warning("GitHub sync failed after retries: %s", e)
 
         await storage.save_guides()
         return summary

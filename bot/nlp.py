@@ -61,82 +61,37 @@ STOP_WORDS = {
     "как", "что", "почему", "про", "по", "на", "и", "в", "с", "от", "у", "это", "редо",
 }
 
-SYNONYMS: dict = {
-    # Battery
-    "batter": "battery", "batery": "battery", "batt": "battery", "battery": "battery",
-    "batteryfix": "battery", "batteryfixes": "battery", "battery drain": "battery",
-    "batt drain": "battery", "batteryproblem": "battery", "battery problem": "battery",
-    "акб": "battery", "батарея": "battery", "батарейка": "battery",
-    # emuMMC / emuNAND
-    "emummc": "emummc", "emmummc": "emummc", "emmumc": "emummc", "emumc": "emummc",
-    "emu mmc": "emummc", "emu-mmc": "emummc", "emu nand": "emunand",
-    "emunand": "emunand", "emu-nand": "emunand", "emunad": "emunand", "emunanc": "emunand",
-    "эмунанд": "emunand", "эмумсд": "emummc",
-    # CFW / Atmosphere
-    "cfw": "custom firmware", "атмосфера": "atmosphere",
-    "atmo": "atmosphere", "atmos": "atmosphere", "atmosphere": "atmosphere",
-    "кастом": "custom firmware", "прошивка": "custom firmware",
-    # Hekate / bootloader
-    "хекате": "hekate", "гекате": "hekate", "bootloader": "hekate",
-    "бутлоадер": "hekate", "загрузчик": "hekate",
-    # Installers
-    "тинфойл": "tinfoil", "тинфоил": "tinfoil",
-    "голдлиф": "goldleaf", "голдлист": "goldleaf",
-    "авту": "awoo", "awoo installer": "awoo",
-    "dbi": "dbi", "дби": "dbi",
-    # Tesla / overlay
-    "tesla menu": "tesla", "теслa": "tesla", "тесла": "tesla",
-    "overlay": "overlay", "оверлей": "overlay",
-    # RCU / sys-clk / clocks
-    "rcu": "rcu", "ркю": "rcu", "ryazha clock": "rcu",
-    "sysclk": "sys-clk", "sys clk": "sys-clk", "частоты": "clock",
-    "overclock": "clock", "разгон": "clock",
-    # sigpatches
-    "sigpatch": "sigpatches", "sig patch": "sigpatches", "патчи": "sigpatches",
-    "сигпатчи": "sigpatches", "сигпатч": "sigpatches",
-    # backup / NAND dump
-    "backup": "backup", "бэкап": "backup", "резервная копия": "backup",
-    "nand dump": "backup", "дамп": "backup",
-    # Update / install
-    "fix": "fix", "repair": "fix", "починить": "fix", "исправить": "fix",
-    "install": "install", "установить": "install", "установка": "install",
-    "remove": "remove", "удалить": "remove", "удаление": "remove",
-    "update": "update", "обновить": "update", "обновление": "update",
-    "aio": "aio switch updater", "аио": "aio switch updater",
-    # Lockpick
-    "lockpick": "lockpick", "ключи": "lockpick", "keys": "lockpick",
-    # Online / ban
-    "онлайн": "online", "бан": "ban", "бана": "ban",
-    "sysnand": "sysnand", "sys nand": "sysnand", "системная нанд": "sysnand",
-    # FPS / performance
-    "fps": "fps", "фпс": "fps", "fpslocker": "fps", "блокировка фпс": "fps",
-    "производительность": "performance", "лаги": "performance",
-    # Game/cheats
-    "cheat": "cheat", "читы": "cheat", "чит": "cheat",
-    "edizon": "edizon", "эдизон": "edizon",
-    # Mission Control / bluetooth
-    "bluetooth": "mission control", "геймпад": "mission control",
-    "контроллер": "mission control", "джойстик": "mission control",
-    # Fizeau / display
-    "fizeau": "fizeau", "фильтр": "fizeau", "цветовой": "fizeau",
-    # SD card
-    "sd": "sd card", "мсд": "sd card", "флешка": "sd card",
-    "карта памяти": "sd card", "microsd": "sd card",
-    # Error / crash
-    "ошибка": "error", "крэш": "crash", "вылет": "crash",
-    "error": "error", "crash": "crash",
-}
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Load generated synonyms if present
-try:
-    _gen_path = os.path.join(os.path.dirname(__file__), "..", "generated_synonyms.json")
-    if os.path.exists(_gen_path):
-        with open(_gen_path, "r", encoding="utf-8") as _gf:
-            for _k, _v in json.load(_gf).items():
-                if _k and _v and _k not in SYNONYMS:
-                    SYNONYMS[_k] = _v
-except Exception:
-    pass
+def _load_synonyms() -> dict:
+    """Load synonyms from synonyms.json (repo root), merging generated_synonyms.json on top."""
+    result: dict = {}
+
+    primary = os.path.join(_BASE_DIR, "synonyms.json")
+    try:
+        with open(primary, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Skip the metadata comment key
+        result = {k: v for k, v in data.items() if k and v and not k.startswith("_")}
+    except FileNotFoundError:
+        logging.warning("synonyms.json not found at %s — using empty synonyms.", primary)
+    except Exception as e:
+        logging.error("Failed loading synonyms.json: %s", e)
+
+    generated = os.path.join(_BASE_DIR, "generated_synonyms.json")
+    try:
+        if os.path.exists(generated):
+            with open(generated, "r", encoding="utf-8") as f:
+                for k, v in json.load(f).items():
+                    if k and v and k not in result:
+                        result[k] = v
+    except Exception as e:
+        logging.warning("Failed loading generated_synonyms.json: %s", e)
+
+    return result
+
+
+SYNONYMS: dict = _load_synonyms()
 
 # Keyboard layout maps
 _EN_TO_RU = str.maketrans(
@@ -400,11 +355,20 @@ def invalidate_index() -> None:
 
 
 async def rebuild_bm25_index_async() -> None:
-    """Rebuild BM25 index under lock to prevent simultaneous rebuilds."""
+    """Rebuild BM25 index under lock to prevent simultaneous rebuilds.
+
+    Uses both the asyncio lock (to serialise concurrent async callers) and the
+    threading lock (to coordinate with synchronous callers in search_guides).
+    Building is done in a thread-pool worker so the event loop stays unblocked.
+    """
     global BM25_INDEX
     async with _get_async_lock():
-        if BM25_INDEX is None:
-            BM25_INDEX = await asyncio.to_thread(build_bm25_index)
+        if BM25_INDEX is not None:
+            return
+        new_index = await asyncio.to_thread(build_bm25_index)
+        with _BM25_LOCK:
+            if BM25_INDEX is None:
+                BM25_INDEX = new_index
 
 
 def warm_index() -> None:
