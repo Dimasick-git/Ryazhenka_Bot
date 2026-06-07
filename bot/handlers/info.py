@@ -1,4 +1,4 @@
-"""Info and utility handlers: /start, /all, /stats, /help, /releases, /digest, /week, /compare, etc."""
+"""Info and utility handlers: /start, /all, /stats, /help, /releases, /digest, /week, /compare, /tip, etc."""
 import asyncio
 import logging
 import random
@@ -350,6 +350,51 @@ async def compare_command(message: types.Message, command: CommandObject) -> Non
         )
 
 
+_CFW_TIPS = [
+    "💡 Всегда делай резервную копию NAND через Hekate перед обновлением CFW — это спасёт от кирпича.",
+    "💡 Используй emuNAND для игры в пиратские игры. sysNAND с CFW онлайн = риск бана от Nintendo.",
+    "💡 90DNS (90.130.70.73) блокирует серверы Nintendo и защищает от бана при онлайн-игре в emuNAND.",
+    "💡 Sigpatches нужно обновлять вместе с каждым обновлением Atmosphere — иначе игры не запустятся.",
+    "💡 AIO-Switch-Updater обновляет все компоненты Ryazhenka CFW за одно нажатие прямо на Switch.",
+    "💡 FPSLocker позволяет залочить игру на 30 FPS для стабильного геймплея или сэкономить заряд.",
+    "💡 RyazhaTune воспроизводит MP3/FLAC прямо во время игры — добавь музыку в /music на SD-карте.",
+    "💡 Tesla overlay открывается комбо L + DDOWN + RS — не выходя из игры.",
+    "💡 Mission-Control позволяет подключить контроллер PS5/Xbox к Switch по Bluetooth без адаптеров.",
+    "💡 Fizeau настраивает фильтр синего света на экране Switch — удобно для игры вечером.",
+    "💡 Ryazha-Status-Monitor в Full-режиме показывает нагрузку всех 4 ядер CPU, GPU и температуру.",
+    "💡 ovlSysmodules позволяет включать/отключать sysmodule без перезагрузки консоли.",
+    "💡 DBI — самый быстрый установщик игр через USB MTP, работает без дополнительных драйверов.",
+    "💡 EdiZon поддерживает скрипты Lua для сложных чит-кодов — база читов хранится на SD-карте.",
+    "💡 ReverseNX-RT принудительно включает TV-режим при работе без дока для максимальной производительности.",
+    "💡 Lockpick_RCM дампит prod.keys и title.keys — они нужны для работы эмуляторов Ryujinx и Yuzu.",
+    "💡 SaltyNX нужен для работы Ryazha-Status-Monitor и некоторых других plагинов — установи его первым.",
+    "💡 libryazhahand использует namespace /config/ryazhahand/ — не смешивай с /config/ultrahand/.",
+    "💡 Ryazhahand-Overlay поддерживает PNG-обои на фоне меню — положи файл wallpaper.png в config.",
+    "💡 Модчип (Picofly/Hwfly) нужен для патченных Switch (V2/Lite/OLED) — на V1 достаточно jig + RCM.",
+    "💡 TegraRcmGUI + jig — самый простой способ войти в RCM и запустить Hekate на Switch V1.",
+    "💡 NSP — это формат цифровых игр из eShop, XCI — дамп картриджа. Оба ставятся через Tinfoil/DBI.",
+    "💡 Goldleaf + Quark позволяют установить NSP по USB с ПК без специальных драйверов.",
+    "💡 Ryazha-cheker отслеживает все коммиты Ryazhenka и присылает уведомления в Telegram автоматически.",
+    "💡 После обновления системного ПО Switch нужно обновить Atmosphere, Hekate и sigpatches одновременно.",
+    "💡 emuMMC лучше создавать на отдельном разделе SD-карты (не в папке) — так быстрее и надёжнее.",
+    "💡 Для защиты от бана отключи автообновление системы в настройках Nintendo Switch (sysNAND).",
+    "💡 RCU (Ryazha Clock Utility) — улучшенный форк sys-clk с FPS-aware VRR ladder для автоматического разгона.",
+    "💡 Используй /quiz в боте чтобы проверить знания Nintendo Switch CFW и изучить новое!",
+    "💡 Atmosphere-RYZ — preconf-форк Atmosphere от команды Ryazhenka, настроенный под Ryazhenka CFW из коробки.",
+]
+
+
+@router.message(Command("tip"))
+async def tip_command(message: types.Message) -> None:
+    """Случайный совет по Nintendo Switch CFW и Ryazhenka."""
+    tip = random.choice(_CFW_TIPS)
+    await message.reply(
+        f"💡 *Совет дня по Switch CFW*\n{'─' * 35}\n\n{tip}\n\n"
+        "_Ещё совет: /tip · Тест знаний: /quiz_",
+        parse_mode="Markdown",
+    )
+
+
 @router.message(Command("help"))
 async def help_command(message: types.Message) -> None:
     text = (
@@ -376,7 +421,8 @@ async def help_command(message: types.Message) -> None:
         "/fav add `<тема>` — Добавить гайд\n"
         "/fav remove `<номер>` — Удалить\n\n"
         " *Интерактивные функции:*\n"
-        " /quiz — Тест знаний по Switch CFW (10 вопросов)\n"
+        "💡 /tip — Случайный совет по Switch CFW\n"
+        " /quiz — Тест знаний по Switch CFW (30 вопросов)\n"
         " /digest — Персональный дайджест гайдов\n"
         " /week — Недельная статистика и топ поисков\n"
         " /compare `<A>` vs `<B>` — Сравнить два инструмента/CFW\n\n"
