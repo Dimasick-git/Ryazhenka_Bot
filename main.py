@@ -174,7 +174,7 @@ async def main() -> None:
 
     total = sum(len(g) for g in storage.GUIDES.values())
     logging.info("Loaded %d categories, %d guides total", len(storage.GUIDES), total)
-    warm_index()
+    await asyncio.to_thread(warm_index)
     logging.info("BM25 index pre-warmed (%d docs)", total)
 
     # Health server уже стартовал в начале main(), не дублируем.
