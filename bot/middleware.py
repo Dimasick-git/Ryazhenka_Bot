@@ -83,7 +83,13 @@ class ThrottlingMiddleware(BaseMiddleware):
         _maybe_cleanup(now)
 
         if len(_COOLDOWNS) >= _MAX_USERS and user_id not in _COOLDOWNS:
-            return await handler(event, data)
+            # Map is full: force an immediate cleanup to reclaim stale slots.
+            # If the map is still full after cleanup the request is dropped to
+            # prevent attackers from exhausting the map with unique IDs and
+            # then bypassing throttling entirely for legitimate commands.
+            _maybe_cleanup(now - _CLEANUP_INTERVAL)  # force cleanup regardless of timer
+            if len(_COOLDOWNS) >= _MAX_USERS:
+                return None
 
         timestamps = _COOLDOWNS[user_id][command]
         _COOLDOWNS[user_id][command] = [t for t in timestamps if now - t < window]

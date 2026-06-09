@@ -8,7 +8,7 @@ from aiogram import Bot, Router, types
 from aiogram.filters import Command, CommandObject
 
 from .. import storage
-from ..config import ADMIN_IDS, GITHUB_REPO, SYNC_INTERVAL_SECONDS
+from ..config import ADMIN_IDS, ALLOWED_DOMAINS, GITHUB_REPO, SYNC_INTERVAL_SECONDS
 from ..helpers import safe_send
 from ..nlp import invalidate_index, warm_index
 from ..services.sync import sync_sources
@@ -121,6 +121,15 @@ async def add_guide_cmd(message: types.Message, command: CommandObject) -> None:
     if not url.startswith(("http://", "https://")):
         await message.reply(" URL должен начинаться с `http://` или `https://`", parse_mode="Markdown")
         return
+    from urllib.parse import urlparse as _urlparse
+    _host = _urlparse(url).netloc.lower().removeprefix("www.")
+    if not any(_host == d or _host.endswith("." + d) for d in ALLOWED_DOMAINS):
+        allowed_str = ", ".join(ALLOWED_DOMAINS)
+        await message.reply(
+            f" Домен `{_host}` не разрешён.\n\nДопустимые домены: `{allowed_str}`",
+            parse_mode="Markdown",
+        )
+        return
     if category not in storage.GUIDES:
         storage.GUIDES[category] = {}
     if title in storage.GUIDES[category]:
@@ -180,6 +189,18 @@ async def edit_guide_cmd(message: types.Message, command: CommandObject) -> None
         await message.reply(" Нужно три части через `|`", parse_mode="Markdown")
         return
     category, title, new_url = parts[0], parts[1], parts[2]
+    if not new_url.startswith(("http://", "https://")):
+        await message.reply(" URL должен начинаться с `http://` или `https://`", parse_mode="Markdown")
+        return
+    from urllib.parse import urlparse as _urlparse
+    _host = _urlparse(new_url).netloc.lower().removeprefix("www.")
+    if not any(_host == d or _host.endswith("." + d) for d in ALLOWED_DOMAINS):
+        allowed_str = ", ".join(ALLOWED_DOMAINS)
+        await message.reply(
+            f" Домен `{_host}` не разрешён.\n\nДопустимые домены: `{allowed_str}`",
+            parse_mode="Markdown",
+        )
+        return
     if category not in storage.GUIDES or title not in storage.GUIDES.get(category, {}):
         await message.reply(f" Гайд `{title}` не найден в `{category}`.", parse_mode="Markdown")
         return

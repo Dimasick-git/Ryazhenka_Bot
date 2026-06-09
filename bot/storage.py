@@ -30,11 +30,41 @@ YT_CHANNELS: list = []
 YT_CACHE: dict = {}
 SEARCH_HISTORY: dict = {}  # user_id -> [{"query": str, "ts": float}, ...]
 
-# ── Concurrency locks for mutable dicts ──────────────
-GUIDES_LOCK: asyncio.Lock = asyncio.Lock()
-USER_FAVORITES_LOCK: asyncio.Lock = asyncio.Lock()
-GUIDE_RATINGS_LOCK: asyncio.Lock = asyncio.Lock()
-SEARCH_HISTORY_LOCK: asyncio.Lock = asyncio.Lock()
+# ── Concurrency locks (lazy — created inside running event loop) ──────────────
+# asyncio.Lock() called at import time raises DeprecationWarning in Python 3.10+
+# and RuntimeError in Python 3.12+.  Use get_*_lock() inside coroutines instead.
+_GUIDES_LOCK: Optional[asyncio.Lock] = None
+_USER_FAVORITES_LOCK: Optional[asyncio.Lock] = None
+_GUIDE_RATINGS_LOCK: Optional[asyncio.Lock] = None
+_SEARCH_HISTORY_LOCK: Optional[asyncio.Lock] = None
+
+
+def get_guides_lock() -> asyncio.Lock:
+    global _GUIDES_LOCK
+    if _GUIDES_LOCK is None:
+        _GUIDES_LOCK = asyncio.Lock()
+    return _GUIDES_LOCK
+
+
+def get_favorites_lock() -> asyncio.Lock:
+    global _USER_FAVORITES_LOCK
+    if _USER_FAVORITES_LOCK is None:
+        _USER_FAVORITES_LOCK = asyncio.Lock()
+    return _USER_FAVORITES_LOCK
+
+
+def get_ratings_lock() -> asyncio.Lock:
+    global _GUIDE_RATINGS_LOCK
+    if _GUIDE_RATINGS_LOCK is None:
+        _GUIDE_RATINGS_LOCK = asyncio.Lock()
+    return _GUIDE_RATINGS_LOCK
+
+
+def get_history_lock() -> asyncio.Lock:
+    global _SEARCH_HISTORY_LOCK
+    if _SEARCH_HISTORY_LOCK is None:
+        _SEARCH_HISTORY_LOCK = asyncio.Lock()
+    return _SEARCH_HISTORY_LOCK
 
 try:
     YT_PRUNE_REMOVED: bool = os.environ.get("YT_PRUNE_REMOVED", "1") in ("1", "true", "True")
@@ -77,7 +107,7 @@ def load_guides() -> dict:
 
 
 async def save_guides() -> None:
-    async with GUIDES_LOCK:
+    async with get_guides_lock():
         await asyncio.to_thread(_atomic_write, GUIDES_FILE, GUIDES)
 
 
@@ -86,7 +116,7 @@ async def reload_guides() -> int:
 
     Returns the total number of guides after reload.
     """
-    async with GUIDES_LOCK:
+    async with get_guides_lock():
         fresh = await asyncio.to_thread(load_guides)
         GUIDES.clear()
         GUIDES.update(fresh)
@@ -116,7 +146,7 @@ def load_favorites() -> dict:
 
 
 async def save_favorites() -> None:
-    async with USER_FAVORITES_LOCK:
+    async with get_favorites_lock():
         await asyncio.to_thread(_atomic_write, FAVORITES_FILE, USER_FAVORITES)
 
 
@@ -132,7 +162,7 @@ def load_ratings() -> dict:
 
 
 async def save_ratings() -> None:
-    async with GUIDE_RATINGS_LOCK:
+    async with get_ratings_lock():
         await asyncio.to_thread(_atomic_write, RATINGS_FILE, GUIDE_RATINGS)
 
 
@@ -214,7 +244,7 @@ async def save_search_history() -> None:
 
 async def add_to_search_history(user_id: str, query: str) -> None:
     import time as _time
-    async with SEARCH_HISTORY_LOCK:
+    async with get_history_lock():
         history = SEARCH_HISTORY.setdefault(user_id, [])
         history[:] = [h for h in history if h.get("query", "").lower() != query.lower()]
         history.append({"query": query, "ts": _time.time()})
