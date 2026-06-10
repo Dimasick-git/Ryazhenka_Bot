@@ -6,6 +6,7 @@ from .admin import router as admin_router
 from .callbacks import router as callbacks_router
 from .inline import router as inline_router
 from .quiz import quiz_router
+from .download import router as download_router
 
 # Legacy alias — handlers registered on this router come from search.py
 from .user import router as user_router
@@ -20,4 +21,5 @@ __all__ = [
     "callbacks_router",
     "inline_router",
     "quiz_router",
+    "download_router",
 ]

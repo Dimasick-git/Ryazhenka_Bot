@@ -43,6 +43,7 @@ from bot.handlers import (
     admin_router,
     callbacks_router,
     discovery_router,
+    download_router,
     info_router,
     inline_router,
     quiz_router,
@@ -142,6 +143,8 @@ async def main() -> None:
             BotCommand(command="week",      description="Недельная статистика и топ поисков"),
             BotCommand(command="compare",   description="Сравнить два инструмента/CFW"),
             BotCommand(command="releases",  description="Последние релизы Ryazhenka"),
+            BotCommand(command="download",  description="Скачать последний релиз Ryazhenka CFW"),
+            BotCommand(command="modules",   description="Все модули Ryazhenka с версиями и ссылками"),
             BotCommand(command="help",      description="Список всех команд"),
         ])
         logging.info("Bot commands registered with Telegram")
@@ -167,6 +170,7 @@ async def main() -> None:
     dp.include_router(discovery_router)
     dp.include_router(social_router)
     dp.include_router(info_router)
+    dp.include_router(download_router)
     dp.include_router(admin_router)
     dp.include_router(callbacks_router)
     dp.include_router(inline_router)
