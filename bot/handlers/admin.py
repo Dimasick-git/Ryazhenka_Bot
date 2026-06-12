@@ -254,6 +254,7 @@ async def purge_autoguides(message: types.Message) -> None:
     storage.GUIDES[archive].update(storage.GUIDES[cat])
     del storage.GUIDES[cat]
     await storage.save_guides()
+    invalidate_index()
     await message.reply(f" '{cat}' перемещена в '{archive}'.")
 
 
@@ -262,6 +263,8 @@ async def purge_autoguides(message: types.Message) -> None:
 async def cleanup_duplicates_cmd(message: types.Message) -> None:
     await message.reply(" Выполняю очистку дубликатов...")
     removed = await storage.dedupe_guides()
+    if removed:
+        invalidate_index()
     await message.reply(f" Очистка завершена. Удалено дубликатов: {removed}")
 
 
