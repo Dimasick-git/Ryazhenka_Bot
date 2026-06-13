@@ -12,6 +12,11 @@ _LIMITS: Dict[str, tuple] = {
     "aiguide":   (10,  2),   # heavy BM25 search: 2 calls per 10s
     "guide":     (5,   5),
     "search":    (5,   5),
+    "ask":       (15,  2),   # AI API call: 2 per 15s
+    "compare":   (20,  2),   # AI API call: 2 per 20s
+    "releases":  (30,  3),   # GitHub API call
+    "modules":   (30,  3),   # GitHub API call
+    "digest":    (30,  2),   # AI + ratings
     "inline":    (3,   4),   # inline mode: 4 queries per 3s — tighter to prevent API spam
     "feedback":  (60,  3),   # anti-spam: 3 per minute
     "random":    (5,   5),

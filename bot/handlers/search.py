@@ -12,7 +12,7 @@ from .. import storage
 from ..helpers import build_guide_key, escape_html, make_rating_keyboard, safe_send
 from ..nlp import search_guides
 from ..services.ai import ask_ai
-from .ctx import DIALOG_CTX, DIALOG_CTX_TIME
+from .ctx import DIALOG_CTX, DIALOG_CTX_TIME, _cleanup_dialog_ctx
 
 router = Router()
 
@@ -33,6 +33,8 @@ async def _register_guide_meta(guide: dict) -> str:
 
 async def _perform_search(message: types.Message, query: str) -> None:
     """Shared search logic for /guide and /aiguide."""
+    _cleanup_dialog_ctx()
+
     if not storage.GUIDES:
         await message.reply(" База гайдов пуста ")
         return
@@ -80,9 +82,29 @@ async def _perform_search(message: types.Message, query: str) -> None:
         await message.reply(text, parse_mode="Markdown", reply_markup=kb if kb.inline_keyboard else None)
         return
 
+    guide_context = ""
+    if results:
+        lines = [
+            f"• {d['title']} ({d['category']}): {d.get('url', '')}"
+            for d, sc in results[:3] if sc >= 20
+        ]
+        guide_context = "\n".join(lines)
+
+    thinking_msg = await message.reply(" Не нашёл точного совпадения, спрашиваю AI...")
+    ai_answer = await ask_ai(query, guide_context)
+    if ai_answer:
+        reply_text = f" *AI-ответ по запросу:* _{query}_\n\n{ai_answer}"
+        if guide_context:
+            reply_text += "\n\n Похожие гайды в базе:"
+            for doc, score in results[:3]:
+                if score >= 20 and doc.get("url"):
+                    reply_text += f"\n• [{doc['title']}]({doc['url']})"
+        await thinking_msg.edit_text(reply_text, parse_mode="Markdown", disable_web_page_preview=True)
+        return
+
     top_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:3]
     cat_hints = "".join(f"\n• /category `{c}`" for c, _ in top_cats)
-    await message.reply(
+    await thinking_msg.edit_text(
         " Не нашёл гайд . Попробуйте:\n"
         "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
         f"Популярные категории:{cat_hints}\n\nИли /all для всех категорий."
