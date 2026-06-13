@@ -49,7 +49,6 @@ from bot.handlers import (
     quiz_router,
     search_router,
     social_router,
-    user_router,
 )
 from bot.middleware import ThrottlingMiddleware
 from bot.nlp import warm_index
