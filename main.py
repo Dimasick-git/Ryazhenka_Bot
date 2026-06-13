@@ -126,6 +126,7 @@ async def main() -> None:
             BotCommand(command="guide",     description="Найти гайд (fuzzy + BM25)"),
             BotCommand(command="aiguide",   description="Умный поиск + AI если гайд не найден"),
             BotCommand(command="ask",       description="Задать вопрос AI по Switch CFW"),
+            BotCommand(command="ask_reset", description="Сбросить контекст разговора с AI"),
             BotCommand(command="all",       description="Все категории"),
             BotCommand(command="random",    description="Случайный гайд"),
             BotCommand(command="new",       description="Последние добавленные гайды"),
