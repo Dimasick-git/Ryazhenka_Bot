@@ -152,25 +152,28 @@ _SYSTEM_PROMPT = (
     "с кастомной прошивкой (CFW). Тебя создала команда Ryazhenka (Dimasick-git и коллеги).\n\n"
     "Экосистема Ryazhenka CFW включает:\n"
     "• RCU (Ryazha Clock Utility) — sysmodule + Tesla overlay для управления частотами CPU/GPU/RAM "
-    "по приложениям с FPS-aware VRR ladder\n"
+    "по приложениям с FPS-aware VRR ladder; профили частот per-Title ID\n"
     "• Ryazhahand-Overlay — Tesla overlay меню (форк Ultrahand-Overlay) с поддержкой LED, "
-    "аудио-паков, PNG-обоев, namespace /config/ryazhahand/\n"
-    "• libryazhahand — библиотека Tesla overlay (форк libultrahand+libtesla)\n"
-    "• ovlSysmodules — управление sysmodule'ами через Tesla overlay\n"
+    "аудио-паков, PNG-обоев, namespace /config/ryazhahand/; открывается L+DDOWN+RS\n"
+    "• libryazhahand — библиотека Tesla overlay (форк libultrahand+libtesla) с namespace /config/ryazhahand/\n"
+    "• ovlSysmodules — управление sysmodule'ами через Tesla overlay без перезагрузки\n"
     "• nx-ovlloader — загрузчик Tesla overlay (Ryazha-edition форк ppkantorski/nx-ovlloader)\n"
-    "• AIO-Switch-Updater — универсальный обновлятор CFW компонентов\n"
-    "• FPSLocker — блокировка FPS в играх через патч\n"
+    "• AIO-Switch-Updater — универсальный обновлятор CFW компонентов (Atmosphere, Hekate, sigpatches)\n"
+    "• FPSLocker — блокировка FPS в играх через патч движка; поддерживает custom patches\n"
     "• Ryazha-Status-Monitor — Tesla overlay мониторинга железа Switch: нагрузка на ядра CPU/GPU, "
-    "температура SoC/PCB/корпуса, RAM, FPS (режимы Full/Mini/Micro, зависит от SaltyNX)\n"
+    "температура SoC/PCB/корпуса, RAM, FPS; режимы Full/Mini/Micro; требует SaltyNX\n"
     "• RyazhaTune — фоновый музыкальный плеер (форк sys-tune): MP3/FLAC/WAV во время игры, "
-    "постоянные плейлисты, Whitelist/Blacklist по Title ID, управление через Tesla overlay\n"
-    "• EdiZon, Fizeau, Mission-Control — форки с доработками команды\n"
-    "• SwitchWave, ReverseNX-RT — утилиты и форки под экосистему Ryazhenka\n"
-    "• Atmosphere-RYZ — кастомный форк Atmosphere с pre-configured настройками под Ryazhenka\n"
-    "• Hekate — bootloader (Ryazha-форк) с дополнительными конфигурациями\n"
+    "постоянные плейлисты, Whitelist/Blacklist и Focus-политики по Title ID, Tesla overlay управление\n"
+    "• EdiZon — редактор сохранений и читкод-менеджер (форк с доработками)\n"
+    "• Fizeau — Tesla overlay коррекции цветопередачи: гамма, ночной режим, цветовая температура\n"
+    "• Mission-Control — sysmodule подключения Bluetooth контроллеров (PS4/PS5/Xbox/Pro)\n"
+    "• SwitchWave — аудио плагин для Nintendo Switch\n"
+    "• ReverseNX-RT — sysmodule принудительного Dock/Handheld режима без TV\n"
+    "• Atmosphere-RYZ — кастомный форк Atmosphere с pre-configured настройками под Ryazhenka CFW\n"
+    "• Hekate — bootloader (Ryazha-форк) с дополнительными конфигурациями и утилитами\n"
     "• Ryazha-cheker — GitHub Actions монитор репозиториев: отслеживает коммиты, релизы, PR, "
-    "workflow-runs и отправляет уведомления в Telegram\n"
-    "• RyazhaAI — AI-ассистент для Switch CFW (веб + Switch homebrew NRO)\n\n"
+    "workflow-runs; уведомления в Telegram и Discord; режимы --weekly, --trending, --summary\n"
+    "• RyazhaAI — AI-ассистент для Switch CFW (веб-приложение + Switch homebrew NRO, 12+ AI провайдеров)\n\n"
     "Основные Switch CFW концепции:\n"
     "• Atmosphere — основная кастомная прошивка от Team Neptune\n"
     "• Hekate — bootloader, управляет запуском CFW и emuNAND\n"
@@ -282,7 +285,7 @@ async def ask_ai_with_history(
     """Multi-turn conversation variant — includes previous messages for context.
 
     ``history`` is a list of dicts: [{"role": "user"|"assistant", "content": "..."}].
-    Only the last 6 turns are kept to stay within token budget.
+    Only the last 10 messages (5 turns) are kept to balance context quality with token budget.
     Results are NOT cached (history makes each request unique).
     """
     if not ANTHROPIC_API_KEY or not _anthropic_available:
@@ -292,8 +295,8 @@ async def ask_ai_with_history(
     if client is None:
         return None
 
-    # Keep last 6 messages (3 turns) to limit token usage
-    trimmed = history[-6:] if len(history) > 6 else history
+    # Keep last 10 messages (5 turns) to balance context quality with token budget
+    trimmed = history[-10:] if len(history) > 10 else history
 
     messages = []
     for h in trimmed:
