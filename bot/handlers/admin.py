@@ -88,6 +88,38 @@ async def bot_status(message: types.Message, bot: Bot) -> None:
     await message.reply(text, parse_mode="Markdown")
 
 
+@router.message(Command("ai_status"))
+@_require_admin
+async def ai_status_cmd(message: types.Message) -> None:
+    """Show AI service status, cache stats, and per-user conversation counts."""
+    import time as _time_mod
+    from ..services.ai import ANTHROPIC_API_KEY, AI_MODEL, _mem_cache, _disk_cache, _disk_cache_loaded
+    from ..handlers.search import _ASK_HISTORY, _ASK_HISTORY_TS, _ASK_HISTORY_TTL
+
+    ai_available = bool(ANTHROPIC_API_KEY)
+    now = _time_mod.time()
+
+    # Count active /ask sessions (non-stale)
+    active_sessions = sum(
+        1 for uid, ts in _ASK_HISTORY_TS.items()
+        if now - ts <= _ASK_HISTORY_TTL and uid in _ASK_HISTORY
+    )
+    total_msgs = sum(len(h) for h in _ASK_HISTORY.values())
+
+    text = (
+        f"🤖 *AI Status*\n{'─' * 30}\n"
+        f"Доступен: {'✅' if ai_available else '❌ (нет API ключа)'}\n"
+        f"Модель: `{AI_MODEL}`\n\n"
+        f"*Кэш ответов (в памяти):* {len(_mem_cache)} записей\n"
+        f"*Кэш ответов (на диске):* {'загружен, ' + str(len(_disk_cache)) + ' записей' if _disk_cache_loaded else 'не загружен'}\n\n"
+        f"*/ask контекст:*\n"
+        f"Активных сессий: {active_sessions}\n"
+        f"Всего сообщений в памяти: {total_msgs}\n"
+        f"TTL сессии: {_ASK_HISTORY_TTL // 60} мин\n"
+    )
+    await message.reply(text, parse_mode="Markdown")
+
+
 @router.message(Command("sync"))
 @_require_admin
 async def manual_sync(message: types.Message, bot: Bot) -> None:
