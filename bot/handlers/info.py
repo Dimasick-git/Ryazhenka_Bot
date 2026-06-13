@@ -13,7 +13,7 @@ from ..config import GITHUB_REPO
 from ..helpers import create_categories_keyboard, safe_send
 from ..nlp import search_guides
 from ..services.ai import ask_ai
-from ..services.github import fetch_github_repos
+from ..services.github import fetch_github_repos, fetch_changelog
 from .discovery import compute_ratings
 
 router = Router()
@@ -395,6 +395,65 @@ async def tip_command(message: types.Message) -> None:
     )
 
 
+def _classify_commit(message: str) -> str:
+    """Classify a commit message into an emoji category."""
+    lower = message.lower()
+    if any(k in lower for k in ("feat", "add", "new", "добав", "новый", "новая")):
+        return "✨"
+    if any(k in lower for k in ("fix", "bug", "hotfix", "patch", "исправ", "баг", "фикс")):
+        return "🐛"
+    if any(k in lower for k in ("refactor", "clean", "rework", "рефактор", "перераб")):
+        return "♻️"
+    if any(k in lower for k in ("update", "bump", "upgrade", "обновл", "актуал")):
+        return "📦"
+    if any(k in lower for k in ("docs", "readme", "документ", "доку")):
+        return "📝"
+    if any(k in lower for k in ("perf", "optim", "speed", "произв", "оптим")):
+        return "⚡"
+    if any(k in lower for k in ("release", "version", "релиз", "версия")):
+        return "🚀"
+    return "🔹"
+
+
+@router.message(Command("changelog"))
+async def changelog_command(message: types.Message) -> None:
+    """Последние коммиты по ключевым репозиториям Ryazhenka."""
+    thinking_msg = await message.reply("⏳ Получаю последние изменения...")
+
+    try:
+        repo_commits = await fetch_changelog()
+    except Exception as e:
+        logging.error("changelog_command: %s", e)
+        await thinking_msg.edit_text("⚠️ Не удалось загрузить changelog. Попробуйте позже.")
+        return
+
+    if not repo_commits:
+        await thinking_msg.edit_text("ℹ️ Нет свежих изменений.")
+        return
+
+    lines = ["📋 *Changelog Ryazhenka*\n" + "─" * 35]
+
+    for repo_full, commits in repo_commits[:8]:
+        repo_name = repo_full.split("/")[-1]
+        repo_url = f"https://github.com/{repo_full}"
+        lines.append(f"\n[*{repo_name}*]({repo_url})")
+        for c in commits[:2]:
+            icon = _classify_commit(c["message"])
+            sha = c["sha"]
+            msg = c["message"][:60]
+            date = c["date"]
+            url = c["url"]
+            lines.append(f"  {icon} [{sha}]({url}) {msg} `{date}`")
+
+    lines.append("\n_Кэш: 15 мин · Больше: /releases_")
+
+    await thinking_msg.edit_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+    )
+
+
 @router.message(Command("help"))
 async def help_command(message: types.Message) -> None:
     text = (
@@ -417,6 +476,7 @@ async def help_command(message: types.Message) -> None:
         " /history — Ваши последние поисковые запросы\n"
         " /recommend — Репозитории автора\n"
         "🚀 /releases — Последние релизы Ryazhenka\n"
+        "📋 /changelog — Свежие коммиты по репозиториям\n"
         "⬇️ /download — Скачать последний релиз CFW\n"
         "🧩 /modules — Все модули с версиями и ссылками\n\n"
         "⭐ *Избранное:*\n"

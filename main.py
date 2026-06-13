@@ -142,8 +142,9 @@ async def main() -> None:
             BotCommand(command="digest",    description="Персональный дайджест гайдов"),
             BotCommand(command="week",      description="Недельная статистика и топ поисков"),
             BotCommand(command="compare",   description="Сравнить два инструмента/CFW"),
-            BotCommand(command="releases",  description="Последние релизы Ryazhenka"),
-            BotCommand(command="download",  description="Скачать последний релиз Ryazhenka CFW"),
+            BotCommand(command="releases",   description="Последние релизы Ryazhenka"),
+            BotCommand(command="changelog",  description="Свежие коммиты по репозиториям"),
+            BotCommand(command="download",   description="Скачать последний релиз Ryazhenka CFW"),
             BotCommand(command="modules",   description="Все модули Ryazhenka с версиями и ссылками"),
             BotCommand(command="help",      description="Список всех команд"),
         ])

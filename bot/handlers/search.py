@@ -5,6 +5,7 @@ import logging
 import time
 
 from aiogram import Router, types
+from aiogram.enums import ChatAction
 from aiogram.filters import Command, CommandObject
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -123,7 +124,8 @@ async def _perform_search(message: types.Message, query: str) -> None:
         ]
         guide_context = "\n".join(lines)
 
-    thinking_msg = await message.reply(" Не нашёл точного совпадения, спрашиваю AI...")
+    await message.bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
+    thinking_msg = await message.reply("🔍 Не нашёл точного совпадения, спрашиваю AI...")
     ai_answer = await ask_ai(query, guide_context)
     if ai_answer:
         reply_text = f" *AI-ответ по запросу:* _{query}_\n\n{ai_answer}"
@@ -196,11 +198,12 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
         )
         return
 
-    thinking_msg = await message.reply(" Думаю...")
+    await message.bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
+    thinking_msg = await message.reply("🤖 Думаю...")
     ai_answer = await ask_ai(query, guide_context)
 
     if ai_answer:
-        reply_text = f" *AI-ответ по запросу:* _{query}_\n\n{ai_answer}"
+        reply_text = f"🤖 *AI-ответ по запросу:* _{query}_\n\n{ai_answer}"
         if guide_context:
             reply_text += "\n\n Связанные гайды в базе:"
             for doc, score in results[:3]:
@@ -233,6 +236,7 @@ async def ask_command(message: types.Message, command: CommandObject) -> None:
         return
 
     user_id = str(message.from_user.id)
+    await message.bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
     thinking_msg = await message.reply("🤔 Думаю...")
 
     results = await asyncio.to_thread(search_guides, query, 3)

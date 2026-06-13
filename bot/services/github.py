@@ -20,6 +20,7 @@ _releases_cache: dict[str, tuple] = {}
 _RELEASES_CACHE_TTL = 3600  # 1 hour
 
 _RYAZHA_REPOS = [
+    "Dimasick-git/Ryazhahand-Overlay",
     "Dimasick-git/RCU",
     "Dimasick-git/AIO-Switch-Updater",
     "Dimasick-git/ovlSysmodules",
@@ -37,6 +38,7 @@ _RYAZHA_REPOS = [
     "Dimasick-git/Hekate",
     "Dimasick-git/SwitchWave",
     "Dimasick-git/ReverseNX-RT",
+    "Dimasick-git/Ryzhenka",
 ]
 
 
@@ -146,6 +148,74 @@ async def fetch_ryazha_releases() -> list[tuple[str, dict]]:
 
     cached_results.sort(key=lambda x: x[1].get("date", ""), reverse=True)
     return cached_results
+
+
+_COMMITS_CACHE_TTL = 900  # 15 minutes
+_commits_cache: dict[str, tuple] = {}
+
+_CHANGELOG_REPOS = [
+    "Dimasick-git/Ryazhahand-Overlay",
+    "Dimasick-git/RCU",
+    "Dimasick-git/AIO-Switch-Updater",
+    "Dimasick-git/libryazhahand",
+    "Dimasick-git/nx-ovlloader",
+    "Dimasick-git/ovlSysmodules",
+    "Dimasick-git/Ryazha-Status-Monitor",
+    "Dimasick-git/RyazhaTune",
+    "Dimasick-git/FPSLocker",
+]
+
+
+async def fetch_recent_commits(repo: str, per_page: int = 5) -> list[dict]:
+    """Fetch recent commits for a repo via GitHub REST API with short cache."""
+    now = time.monotonic()
+    entry = _commits_cache.get(repo)
+    if entry is not None:
+        data, ts = entry
+        if now - ts < _COMMITS_CACHE_TTL:
+            return data
+
+    try:
+        session = _get_session()
+        async with session.get(
+            f"https://api.github.com/repos/{repo}/commits?per_page={per_page}",
+            timeout=_TIMEOUT_20,
+        ) as resp:
+            if resp.status in (404, 409):
+                _commits_cache[repo] = ([], now)
+                return []
+            resp.raise_for_status()
+            data = await resp.json()
+            commits = []
+            for c in data:
+                commit_info = c.get("commit", {})
+                author = commit_info.get("author", {}) or {}
+                commits.append({
+                    "sha": c.get("sha", "")[:7],
+                    "message": (commit_info.get("message", "") or "").split("\n")[0][:80],
+                    "author": author.get("name", "unknown"),
+                    "date": (author.get("date", "") or "")[:10],
+                    "url": c.get("html_url", ""),
+                })
+            _commits_cache[repo] = (commits, now)
+            return commits
+    except Exception as e:
+        logging.debug("Failed fetching commits for %s: %s", repo, e)
+        _commits_cache[repo] = ([], now)
+        return []
+
+
+async def fetch_changelog() -> list[tuple[str, list[dict]]]:
+    """Fetch recent commits from all changelog repos concurrently."""
+    results = await asyncio.gather(
+        *[fetch_recent_commits(r, 3) for r in _CHANGELOG_REPOS],
+        return_exceptions=True,
+    )
+    output = []
+    for repo, result in zip(_CHANGELOG_REPOS, results):
+        if isinstance(result, list) and result:
+            output.append((repo, result))
+    return output
 
 
 async def fetch_github_repos(user_or_org: str, limit: int = 20) -> list:
