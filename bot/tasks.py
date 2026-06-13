@@ -17,7 +17,7 @@ async def _notify_admins(bot: Bot, text: str) -> None:
         try:
             await bot.send_message(aid, text)
         except Exception:
-            pass
+            logging.warning("Failed to notify admin %d", aid)
 
 
 async def background_sync(bot: Bot) -> None:

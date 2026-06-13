@@ -37,6 +37,10 @@ _GUIDES_LOCK: Optional[asyncio.Lock] = None
 _USER_FAVORITES_LOCK: Optional[asyncio.Lock] = None
 _GUIDE_RATINGS_LOCK: Optional[asyncio.Lock] = None
 _SEARCH_HISTORY_LOCK: Optional[asyncio.Lock] = None
+_GUIDES_META_LOCK: Optional[asyncio.Lock] = None
+_SETTINGS_LOCK: Optional[asyncio.Lock] = None
+_YT_CHANNELS_LOCK: Optional[asyncio.Lock] = None
+_YT_CACHE_LOCK: Optional[asyncio.Lock] = None
 
 
 def get_guides_lock() -> asyncio.Lock:
@@ -65,6 +69,34 @@ def get_history_lock() -> asyncio.Lock:
     if _SEARCH_HISTORY_LOCK is None:
         _SEARCH_HISTORY_LOCK = asyncio.Lock()
     return _SEARCH_HISTORY_LOCK
+
+
+def get_guides_meta_lock() -> asyncio.Lock:
+    global _GUIDES_META_LOCK
+    if _GUIDES_META_LOCK is None:
+        _GUIDES_META_LOCK = asyncio.Lock()
+    return _GUIDES_META_LOCK
+
+
+def get_settings_lock() -> asyncio.Lock:
+    global _SETTINGS_LOCK
+    if _SETTINGS_LOCK is None:
+        _SETTINGS_LOCK = asyncio.Lock()
+    return _SETTINGS_LOCK
+
+
+def get_yt_channels_lock() -> asyncio.Lock:
+    global _YT_CHANNELS_LOCK
+    if _YT_CHANNELS_LOCK is None:
+        _YT_CHANNELS_LOCK = asyncio.Lock()
+    return _YT_CHANNELS_LOCK
+
+
+def get_yt_cache_lock() -> asyncio.Lock:
+    global _YT_CACHE_LOCK
+    if _YT_CACHE_LOCK is None:
+        _YT_CACHE_LOCK = asyncio.Lock()
+    return _YT_CACHE_LOCK
 
 try:
     YT_PRUNE_REMOVED: bool = os.environ.get("YT_PRUNE_REMOVED", "1") in ("1", "true", "True")
@@ -178,7 +210,8 @@ def load_guides_meta() -> dict:
 
 
 async def save_guides_meta() -> None:
-    await asyncio.to_thread(_atomic_write, GUIDES_META_FILE, GUIDES_META)
+    async with get_guides_meta_lock():
+        await asyncio.to_thread(_atomic_write, GUIDES_META_FILE, GUIDES_META)
 
 
 # ── Settings ──────────────────────────────────────────────────
@@ -193,7 +226,8 @@ def load_settings() -> dict:
 
 
 async def save_settings() -> None:
-    await asyncio.to_thread(_atomic_write, SETTINGS_PATH, SETTINGS)
+    async with get_settings_lock():
+        await asyncio.to_thread(_atomic_write, SETTINGS_PATH, SETTINGS)
 
 
 # ── YouTube state ─────────────────────────────────────────────
@@ -210,7 +244,8 @@ def load_yt_channels() -> list:
 
 
 async def save_yt_channels() -> None:
-    await asyncio.to_thread(_atomic_write, YT_CHANNELS_FILE, YT_CHANNELS)
+    async with get_yt_channels_lock():
+        await asyncio.to_thread(_atomic_write, YT_CHANNELS_FILE, YT_CHANNELS)
 
 
 def load_yt_cache() -> dict:
@@ -224,7 +259,8 @@ def load_yt_cache() -> dict:
 
 
 async def save_yt_cache() -> None:
-    await asyncio.to_thread(_atomic_write, YT_CACHE_FILE, YT_CACHE)
+    async with get_yt_cache_lock():
+        await asyncio.to_thread(_atomic_write, YT_CACHE_FILE, YT_CACHE)
 
 
 # ── Search history ────────────────────────────────────────────

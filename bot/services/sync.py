@@ -94,7 +94,7 @@ async def resolve_duckduckgo_first(title: str) -> str:
                     if uddg:
                         target = urllib.parse.unquote(uddg[0])
                         net = urllib.parse.urlparse(target).netloc
-                        if any(d in net for d in ALLOWED_DOMAINS):
+                        if any(net == d or net.endswith("." + d) for d in ALLOWED_DOMAINS):
                             return target
                 else:
                     net = parsed.netloc
