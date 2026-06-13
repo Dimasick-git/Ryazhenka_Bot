@@ -18,6 +18,7 @@ router = Router()
 
 def _is_admin(user_id: int) -> bool:
     if not ADMIN_IDS:
+        logging.warning("ADMIN_IDS is not configured — all admin commands are rejected.")
         return False
     return user_id in ADMIN_IDS
 
@@ -143,7 +144,7 @@ async def add_guide_cmd(message: types.Message, command: CommandObject) -> None:
     meta_key = f"{category}|{title}"
     storage.GUIDES_META[meta_key] = {
         "title": title, "url": url, "category": category,
-        "added_at": datetime.datetime.utcnow().isoformat()[:19],
+        "added_at": datetime.datetime.now(datetime.timezone.utc).isoformat()[:19],
     }
     await storage.save_guides_meta()
     invalidate_index()

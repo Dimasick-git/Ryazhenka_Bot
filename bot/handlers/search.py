@@ -119,6 +119,9 @@ async def send_guide(message: types.Message, command: CommandObject) -> None:
     if not query:
         await message.reply(" Укажите тему после команды, например: /guide battery")
         return
+    if len(query) > 200:
+        await message.reply(" Запрос слишком длинный. Максимум 200 символов.")
+        return
     await _perform_search(message, query)
 
 
@@ -132,6 +135,9 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
             "`/aiguide установка игр atmosphere`",
             parse_mode="Markdown",
         )
+        return
+    if len(query) > 200:
+        await message.reply(" Запрос слишком длинный. Максимум 200 символов.")
         return
 
     await storage.add_to_search_history(str(message.from_user.id), query)
@@ -186,6 +192,9 @@ async def ask_command(message: types.Message, command: CommandObject) -> None:
             "`/ask как установить игру через Tinfoil?`",
             parse_mode="Markdown",
         )
+        return
+    if len(query) > 200:
+        await message.reply(" Запрос слишком длинный. Максимум 200 символов.")
         return
 
     thinking_msg = await message.reply(" Думаю...")
