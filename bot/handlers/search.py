@@ -11,10 +11,43 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from .. import storage
 from ..helpers import build_guide_key, escape_html, make_rating_keyboard, safe_send
 from ..nlp import search_guides
-from ..services.ai import ask_ai
+from ..services.ai import ask_ai, ask_ai_with_history
 from .ctx import DIALOG_CTX, DIALOG_CTX_TIME, _cleanup_dialog_ctx
 
 router = Router()
+
+# Per-user conversation history for /ask command
+# Key: str(user_id), Value: list of {"role": "user"|"assistant", "content": str}
+_ASK_HISTORY: dict[str, list[dict]] = {}
+_ASK_HISTORY_MAX_TURNS = 10      # Keep last 10 turns (20 messages)
+_ASK_HISTORY_TTL = 1800          # Reset context after 30 min of inactivity (seconds)
+_ASK_HISTORY_TS: dict[str, float] = {}  # last-message timestamps per user
+
+
+def _get_user_history(user_id: str) -> list[dict]:
+    """Return conversation history for user, evicting if stale."""
+    ts = _ASK_HISTORY_TS.get(user_id, 0)
+    if time.time() - ts > _ASK_HISTORY_TTL:
+        _ASK_HISTORY.pop(user_id, None)
+        _ASK_HISTORY_TS.pop(user_id, None)
+    return _ASK_HISTORY.get(user_id, [])
+
+
+def _append_history(user_id: str, role: str, content: str) -> None:
+    """Append a message to the user's history, trimming to the last N turns."""
+    hist = _ASK_HISTORY.setdefault(user_id, [])
+    hist.append({"role": role, "content": content})
+    max_msgs = _ASK_HISTORY_MAX_TURNS * 2
+    if len(hist) > max_msgs:
+        del hist[:-max_msgs]
+    _ASK_HISTORY_TS[user_id] = time.time()
+
+
+def _clear_user_history(user_id: str) -> int:
+    """Clear history for a user, return the number of turns removed."""
+    msgs = len(_ASK_HISTORY.pop(user_id, []))
+    _ASK_HISTORY_TS.pop(user_id, None)
+    return msgs // 2
 
 
 async def _register_guide_meta(guide: dict) -> str:
@@ -182,22 +215,25 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
 
 @router.message(Command("ask"))
 async def ask_command(message: types.Message, command: CommandObject) -> None:
-    """Free-form AI question about Nintendo Switch CFW."""
+    """Free-form AI question about Nintendo Switch CFW with multi-turn conversation."""
     query = (command.args or "").strip()
     if not query:
         await message.reply(
-            " *Задай вопрос AI по Nintendo Switch CFW:*\n\n"
+            "🤖 *Задай вопрос AI по Nintendo Switch CFW:*\n\n"
             "`/ask как сделать backup NAND?`\n"
             "`/ask в чём разница emuNAND и sysNAND?`\n"
-            "`/ask как установить игру через Tinfoil?`",
+            "`/ask как установить игру через Tinfoil?`\n\n"
+            "_Я запоминаю контекст разговора — можно задавать уточняющие вопросы!_\n"
+            "Сброс контекста: /ask\_reset",
             parse_mode="Markdown",
         )
         return
-    if len(query) > 200:
-        await message.reply(" Запрос слишком длинный. Максимум 200 символов.")
+    if len(query) > 300:
+        await message.reply(" Запрос слишком длинный. Максимум 300 символов.")
         return
 
-    thinking_msg = await message.reply(" Думаю...")
+    user_id = str(message.from_user.id)
+    thinking_msg = await message.reply("🤔 Думаю...")
 
     results = await asyncio.to_thread(search_guides, query, 3)
     guide_context = ""
@@ -205,20 +241,39 @@ async def ask_command(message: types.Message, command: CommandObject) -> None:
         lines = [f"• {d['title']} ({d['category']}): {d.get('url', '')}" for d, sc in results if sc >= 25]
         guide_context = "\n".join(lines)
 
-    ai_answer = await ask_ai(query, guide_context)
+    history = _get_user_history(user_id)
+    ai_answer = await ask_ai_with_history(query, history, guide_context)
 
     if ai_answer:
-        reply_text = f" *Ответ AI:*\n\n{ai_answer}"
+        _append_history(user_id, "user", query)
+        _append_history(user_id, "assistant", ai_answer)
+        turn_count = len(_ASK_HISTORY.get(user_id, [])) // 2
+        turn_badge = f" _[{turn_count} реплик в контексте]_" if turn_count > 1 else ""
+        reply_text = f"🤖 *Ответ AI:*{turn_badge}\n\n{ai_answer}"
         if guide_context:
-            reply_text += "\n\n Связанные гайды:"
+            reply_text += "\n\n📚 Связанные гайды:"
             for doc, score in results[:3]:
                 if score >= 25 and doc.get("url"):
                     reply_text += f"\n• [{doc['title']}]({doc['url']})"
         await thinking_msg.edit_text(reply_text, parse_mode="Markdown", disable_web_page_preview=True)
     else:
         await thinking_msg.edit_text(
-            " AI недоступен. Попробуй:\n"
+            "❌ AI недоступен. Попробуй:\n"
             "• /guide — поиск по базе гайдов\n"
             "• /all — все категории\n"
             "• /feedback — предложи добавить гайд"
         )
+
+
+@router.message(Command("ask_reset"))
+async def ask_reset_command(message: types.Message) -> None:
+    """Reset the AI conversation context for the current user."""
+    user_id = str(message.from_user.id)
+    turns = _clear_user_history(user_id)
+    if turns:
+        await message.reply(
+            f"🔄 Контекст разговора сброшен ({turns} реплик удалено).\n"
+            "Следующий /ask начнёт новый разговор с нуля.",
+        )
+    else:
+        await message.reply("ℹ️ Контекст пустой — нечего сбрасывать.")
