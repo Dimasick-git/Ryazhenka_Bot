@@ -395,6 +395,109 @@ async def tip_command(message: types.Message) -> None:
     )
 
 
+_HOWTO_STEPS = {
+    "rcm": (
+        "🔓 *Взлом через RCM (Switch V1 непатченный)*\n"
+        "─" * 35 + "\n\n"
+        "Подходит для Switch V1 (2017–2018) с уязвимостью fusée-gelée.\n\n"
+        "*Шаг 1.* Скачайте с GitHub: Hekate, Atmosphere, sigpatches\n"
+        "*Шаг 2.* Распакуйте архивы на SD-карту (корень)\n"
+        "*Шаг 3.* Установите jig (RCM замыкатель) в правый Joy-Con слот\n"
+        "*Шаг 4.* Зажмите `Vol+` и нажмите `Power` — Switch войдёт в RCM\n"
+        "*Шаг 5.* Подключите Switch к ПК, запустите TegraRcmGUI\n"
+        "*Шаг 6.* Перетащите `hekate_ctcaer_*.bin` в TegraRcmGUI → Inject\n"
+        "*Шаг 7.* В меню Hekate: `Launch → Atmosphere FSS0 emuMMC`\n\n"
+        "📌 Рекомендуем создать emuMMC через `Tools → Partition SD Card`\n"
+        "⚠️ Обязательно сделайте NAND backup: `Tools → Backup → eMMC BOOT0&1 + eMMC RAW GPP`"
+    ),
+    "modchip": (
+        "🔧 *Взлом через ModChip (патченный Switch / Lite / OLED)*\n"
+        "─" * 35 + "\n\n"
+        "Подходит для Switch V2, Lite, OLED где RCM недоступен.\n\n"
+        "*Шаг 1.* Купите ModChip: Picofly (RP2040/RP2350), Hwfly или SX Core\n"
+        "*Шаг 2.* Установите ModChip (требует пайки — обратитесь к мастеру)\n"
+        "*Шаг 3.* После установки ModChip запускается автоматически при включении\n"
+        "*Шаг 4.* Скачайте Ryazhenka CFW: /download\n"
+        "*Шаг 5.* Распакуйте архив на SD-карту (корень)\n"
+        "*Шаг 6.* Включите Switch — Hekate загрузится автоматически\n"
+        "*Шаг 7.* В меню Hekate: `Launch → Atmosphere FSS0 emuMMC`\n\n"
+        "⚠️ Установка ModChip аннулирует гарантию Nintendo"
+    ),
+    "emummc": (
+        "💾 *Создание emuMMC (рекомендуется)*\n"
+        "─" * 35 + "\n\n"
+        "emuMMC изолирует CFW от sysNAND, защищая от бана.\n\n"
+        "*Шаг 1.* Загрузитесь в Hekate (через RCM или ModChip)\n"
+        "*Шаг 2.* `Tools → Partition SD Card`\n"
+        "*Шаг 3.* Установите emuMMC (File-based): перетащите ползунок\n"
+        "*Шаг 4.* Нажмите `Next Step → Start` — ждите завершения\n"
+        "*Шаг 5.* `emuMMC → Create emuMMC → SD File Based`\n"
+        "*Шаг 6.* После создания: `Launch → Atmosphere FSS0 emuMMC`\n\n"
+        "✅ emuMMC создан! Пиратские игры устанавливайте только сюда."
+    ),
+    "sigpatches": (
+        "🔑 *Установка sigpatches*\n"
+        "─" * 35 + "\n\n"
+        "Sigpatches нужны для запуска неподписанных (пиратских) игр.\n\n"
+        "*Шаг 1.* Скачайте через AIO-Switch-Updater (`/guide aio updater`)\n"
+        "   *или* вручную с sigmapatches.coomer.party\n"
+        "*Шаг 2.* Распакуйте архив на SD-карту (корень)\n"
+        "*Шаг 3.* Перезагрузите Switch в CFW\n\n"
+        "⚠️ Sigpatches нужно обновлять при каждом обновлении Atmosphere!"
+    ),
+    "dns": (
+        "🛡️ *Настройка 90DNS (защита от бана)*\n"
+        "─" * 35 + "\n\n"
+        "90DNS блокирует серверы Nintendo и защищает от бана.\n\n"
+        "*Шаг 1.* На Switch: `Настройки → Интернет → Параметры интернета`\n"
+        "*Шаг 2.* Выберите вашу сеть Wi-Fi → `Изменить настройки`\n"
+        "*Шаг 3.* `DNS → Вручную`\n"
+        "*Шаг 4.* Основной DNS: `90.130.70.73`\n"
+        "*Шаг 5.* Дополнительный DNS: `90.130.70.73`\n"
+        "*Шаг 6.* Сохраните и переподключитесь\n\n"
+        "✅ Проверка: Настройки → Интернет → Проверить соединение\n"
+        "   Должно появиться 'Интернет недоступен' (это нормально!)"
+    ),
+}
+
+
+@router.message(Command("howto"))
+async def howto_command(message: types.Message, command: CommandObject) -> None:
+    """Пошаговые руководства по Switch CFW."""
+    arg = (command.args or "").strip().lower()
+
+    if not arg:
+        await message.reply(
+            "📖 *Пошаговые руководства Ryazhenka CFW*\n"
+            "─" * 35 + "\n\n"
+            "Выберите тему:\n\n"
+            "🔓 `/howto rcm` — Взлом через RCM (V1)\n"
+            "🔧 `/howto modchip` — Взлом через ModChip (V2/Lite/OLED)\n"
+            "💾 `/howto emummc` — Создание emuMMC\n"
+            "🔑 `/howto sigpatches` — Установка sigpatches\n"
+            "🛡️ `/howto dns` — Настройка 90DNS (защита от бана)\n\n"
+            "💡 Пример: `/howto rcm`\n\n"
+            "📚 Полная документация: /help",
+            parse_mode="Markdown",
+        )
+        return
+
+    step_text = _HOWTO_STEPS.get(arg)
+    if step_text:
+        await message.reply(
+            step_text + "\n\n_Другие руководства: /howto_",
+            parse_mode="Markdown",
+        )
+    else:
+        available = ", ".join(f"`{k}`" for k in _HOWTO_STEPS)
+        await message.reply(
+            f"❓ Руководство `{arg}` не найдено.\n\n"
+            f"Доступные темы: {available}\n\n"
+            "Введите `/howto` для списка всех руководств.",
+            parse_mode="Markdown",
+        )
+
+
 def _classify_commit(message: str) -> str:
     """Classify a commit message into an emoji category."""
     lower = message.lower()
@@ -485,10 +588,11 @@ async def help_command(message: types.Message) -> None:
         "/fav remove `<номер>` — Удалить\n\n"
         " *Интерактивные функции:*\n"
         "💡 /tip — Случайный совет по Switch CFW\n"
-        " /quiz — Тест знаний по Switch CFW (30 вопросов)\n"
+        " /quiz — Тест знаний по Switch CFW (42 вопроса)\n"
         " /digest — Персональный дайджест гайдов\n"
         " /week — Недельная статистика и топ поисков\n"
-        " /compare `<A>` vs `<B>` — Сравнить два инструмента/CFW\n\n"
+        " /compare `<A>` vs `<B>` — Сравнить два инструмента/CFW\n"
+        "📖 /howto `<тема>` — Пошаговые руководства (rcm/modchip/emummc/sigpatches/dns)\n\n"
         " *Обратная связь:*\n"
         "/feedback `<текст>` — Предложить новый гайд\n\n"
         " *Inline-режим:*\n"
