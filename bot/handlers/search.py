@@ -51,6 +51,16 @@ def _clear_user_history(user_id: str) -> int:
     return msgs // 2
 
 
+def cleanup_stale_ask_history() -> int:
+    """Purge conversation history entries older than TTL. Called by background task."""
+    now = time.time()
+    stale = [uid for uid, ts in list(_ASK_HISTORY_TS.items()) if now - ts > _ASK_HISTORY_TTL]
+    for uid in stale:
+        _ASK_HISTORY.pop(uid, None)
+        _ASK_HISTORY_TS.pop(uid, None)
+    return len(stale)
+
+
 async def _register_guide_meta(guide: dict) -> str:
     """Ensure guide metadata exists in GUIDE_RATINGS; return guide_key."""
     guide_key = build_guide_key(guide["url"])

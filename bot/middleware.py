@@ -13,14 +13,23 @@ _LIMITS: Dict[str, tuple] = {
     "guide":     (5,   5),
     "search":    (5,   5),
     "ask":       (15,  2),   # AI API call: 2 per 15s
+    "ask_reset": (10,  3),
     "compare":   (20,  2),   # AI API call: 2 per 20s
     "releases":  (30,  3),   # GitHub API call
-    "modules":   (30,  3),   # GitHub API call
+    "modules":   (30,  3),   # GitHub API call (~19 repos, many requests)
+    "changelog": (60,  2),   # GitHub API call (~9 repos per call)
+    "download":  (30,  3),   # GitHub API call
     "digest":    (30,  2),   # AI + ratings
+    "week":      (30,  2),   # aggregate stats + DB read
+    "trending":  (30,  3),
+    "tip":       (10,  4),
     "inline":    (3,   4),   # inline mode: 4 queries per 3s — tighter to prevent API spam
     "feedback":  (60,  3),   # anti-spam: 3 per minute
     "random":    (5,   5),
     "recommend": (30,  2),   # GitHub API call
+    "history":   (10,  5),
+    "fav":       (10,  5),
+    "quiz":      (10,  3),
 }
 
 _COOLDOWNS: Dict[str, Dict[str, list]] = defaultdict(lambda: defaultdict(list))

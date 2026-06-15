@@ -8,6 +8,7 @@ from aiogram import Bot
 from . import storage
 from .config import ADMIN_IDS, SYNC_INTERVAL_SECONDS
 from .handlers.ctx import _cleanup_dialog_ctx
+from .handlers.search import cleanup_stale_ask_history
 from .nlp import invalidate_index
 from .services.sync import resolve_auto_guides_links, sync_sources
 
@@ -62,6 +63,18 @@ async def background_ctx_cleanup() -> None:
             logging.exception("DIALOG_CTX cleanup failed")
 
 
+async def background_ask_history_cleanup() -> None:
+    """Periodically evict stale /ask conversation histories to prevent unbounded growth."""
+    while True:
+        await asyncio.sleep(1800)  # every 30 min
+        try:
+            purged = await asyncio.to_thread(cleanup_stale_ask_history)
+            if purged:
+                logging.debug("Purged %d stale /ask history entries", purged)
+        except Exception:
+            logging.exception("ASK history cleanup failed")
+
+
 def start_background_tasks(bot: Bot) -> None:
     """Schedule all background tasks. Call after the event loop is running."""
     # Background sync -- только если есть источники для синхронизации.
@@ -70,3 +83,4 @@ def start_background_tasks(bot: Bot) -> None:
 
     asyncio.create_task(background_resolver(bot))
     asyncio.create_task(background_ctx_cleanup())
+    asyncio.create_task(background_ask_history_cleanup())

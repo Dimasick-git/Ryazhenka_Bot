@@ -163,6 +163,9 @@ _CHANGELOG_REPOS = [
     "Dimasick-git/Ryazha-Status-Monitor",
     "Dimasick-git/RyazhaTune",
     "Dimasick-git/FPSLocker",
+    "Dimasick-git/Fizeau",
+    "Dimasick-git/EdiZon",
+    "Dimasick-git/Mission-Control",
 ]
 
 
