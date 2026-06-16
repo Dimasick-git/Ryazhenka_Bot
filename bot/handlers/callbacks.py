@@ -55,7 +55,7 @@ async def handle_category(callback_query: types.CallbackQuery) -> None:
 
     category = next((c for c in storage.GUIDES if cat_cb(c) == cat_hash), None)
     if category is None:
-        await callback_query.answer(" Категория не найдена")
+        await callback_query.answer("❌ Категория не найдена")
         return
 
     text, kb = _build_category_page(category, page)
@@ -77,7 +77,7 @@ async def back_to_categories(callback_query: types.CallbackQuery) -> None:
         " Команды:\n• /guide `<тема>` — найти гайд\n"
         "• /all — показать все категории\n"
         "• /help — полный список команд\n\n"
-        " Выберите категорию ниже:"
+        "📂 Выберите категорию ниже:"
     )
     try:
         await callback_query.message.edit_text(
@@ -95,7 +95,7 @@ async def open_suggestion(callback_query: types.CallbackQuery) -> None:
     key = callback_query.data.split("|", 1)[1]
     doc = DIALOG_CTX.get(key)
     if not doc:
-        await callback_query.answer(" Контекст не найден")
+        await callback_query.answer("❌ Контекст не найден")
         return
     url = doc.get("url")
     title = doc.get("title")
@@ -106,14 +106,14 @@ async def open_suggestion(callback_query: types.CallbackQuery) -> None:
             await callback_query.message.answer(f"{title}\n{url}")
         await callback_query.answer()
     else:
-        await callback_query.answer(" Нет URL для этого гайда")
+        await callback_query.answer("❌ Нет URL для этого гайда")
 
 
 @router.callback_query(F.data.startswith("rate|"))
 async def handle_rating(callback_query: types.CallbackQuery) -> None:
     parts = callback_query.data.split("|", 2)
     if len(parts) != 3:
-        await callback_query.answer(" Ошибка")
+        await callback_query.answer("❌ Ошибка")
         return
     _, direction, guide_key = parts
     user_id = str(callback_query.from_user.id)
@@ -124,10 +124,10 @@ async def handle_rating(callback_query: types.CallbackQuery) -> None:
     ratings = storage.GUIDE_RATINGS.setdefault(guide_key, {"up": 0, "down": 0})
     if direction == "up":
         ratings["up"] = ratings.get("up", 0) + 1
-        await callback_query.answer(" Спасибо за оценку!")
+        await callback_query.answer("✅ Спасибо за оценку!")
     else:
         ratings["down"] = ratings.get("down", 0) + 1
-        await callback_query.answer(" Спасибо за оценку!")
+        await callback_query.answer("✅ Спасибо за оценку!")
     storage.GUIDE_RATINGS[voted_key] = True
     await storage.save_ratings()
     try:
@@ -146,14 +146,14 @@ async def favadd_callback(callback_query: types.CallbackQuery) -> None:
         return
     title, url, category = entry.get("title", ""), entry.get("url", ""), entry.get("category", "")
     if not url:
-        await callback_query.answer(" У гайда нет ссылки.")
+        await callback_query.answer("❌ У гайда нет ссылки.")
         return
     favs = storage.USER_FAVORITES.setdefault(user_id, [])
     if any(f["url"] == url for f in favs):
         await callback_query.answer("⭐ Уже в избранном!")
         return
     if len(favs) >= 50:
-        await callback_query.answer(" Максимум 50 гайдов в избранном.")
+        await callback_query.answer("⚠️ Максимум 50 гайдов в избранном.")
         return
     favs.append({"title": title, "url": url, "category": category})
     await storage.save_favorites()
