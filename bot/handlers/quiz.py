@@ -63,7 +63,7 @@ def _question_text(state: dict) -> str:
     score = state["score"]
 
     lines = [
-        f" *Вопрос {q_idx + 1}/{total}* | Счёт: {score}/{q_idx}",
+        f"❓ *Вопрос {q_idx + 1}/{total}* | Счёт: {score}/{q_idx}",
         f"{'─' * 32}",
         f"*{question['q']}*",
         "",
@@ -115,13 +115,13 @@ async def quiz_answer(callback: types.CallbackQuery) -> None:
     # Security: only the owner of this quiz session can answer
     actual_uid = str(callback.from_user.id)
     if actual_uid != cb_uid:
-        await callback.answer(" Это не ваш тест!", show_alert=True)
+        await callback.answer("🚫 Это не ваш тест!", show_alert=True)
         return
 
     state = QUIZ_STATE.get(actual_uid)
     if not state:
         await callback.message.edit_text(
-            " Сессия теста не найдена или истекла.\nНачните заново: /quiz",
+            "❌ Сессия теста не найдена или истекла.\nНачните заново: /quiz",
             parse_mode="Markdown",
         )
         return
@@ -137,7 +137,7 @@ async def quiz_answer(callback: types.CallbackQuery) -> None:
     current_q_idx = state["q_idx"]
     if cb_q_idx != current_q_idx:
         # Stale button — user already answered this question
-        await callback.answer(" Вы уже ответили на этот вопрос.", show_alert=True)
+        await callback.answer("⚠️ Вы уже ответили на этот вопрос.", show_alert=True)
         return
 
     order = state["order"]
@@ -148,11 +148,11 @@ async def quiz_answer(callback: types.CallbackQuery) -> None:
 
     if is_correct:
         state["score"] += 1
-        result_line = " *Правильно!*"
+        result_line = "✅ *Правильно!*"
     else:
         correct_letter = _LETTERS[correct]
         correct_text = question["opts"][correct]
-        result_line = f" *Неверно.* Правильный ответ: {correct_letter} — {correct_text}"
+        result_line = f"❌ *Неверно.* Правильный ответ: {correct_letter} — {correct_text}"
 
     score = state["score"]
     total = state["total"]
@@ -160,14 +160,14 @@ async def quiz_answer(callback: types.CallbackQuery) -> None:
 
     # Build feedback text
     feedback_lines = [
-        f" *Вопрос {q_num}/{total}*",
+        f"❓ *Вопрос {q_num}/{total}*",
         f"*{question['q']}*",
         "",
         result_line,
         "",
         f" {question['explain']}",
         "",
-        f" Счёт: *{score}/{q_num}*",
+        f"🏆 Счёт: *{score}/{q_num}*",
     ]
 
     next_q_idx = current_q_idx + 1
@@ -178,13 +178,13 @@ async def quiz_answer(callback: types.CallbackQuery) -> None:
 
         pct = round(score / total * 100)
         if pct == 100:
-            medal = " Отлично!"
+            medal = "🥇 Отлично!"
         elif pct >= 70:
-            medal = " Хорошо!"
+            medal = "🥈 Хорошо!"
         elif pct >= 40:
-            medal = " Неплохо, но есть куда расти."
+            medal = "🥉 Неплохо, но есть куда расти."
         else:
-            medal = " Стоит подтянуть знания CFW."
+            medal = "📚 Стоит подтянуть знания CFW."
 
         feedback_lines += [
             "─" * 32,
