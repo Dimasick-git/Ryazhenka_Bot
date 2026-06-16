@@ -80,7 +80,7 @@ async def _perform_search(message: types.Message, query: str) -> None:
     _cleanup_dialog_ctx()
 
     if not storage.GUIDES:
-        await message.reply(" База гайдов пуста ")
+        await message.reply("📭 База гайдов пуста")
         return
 
     await storage.add_to_search_history(str(message.from_user.id), query)
@@ -88,7 +88,7 @@ async def _perform_search(message: types.Message, query: str) -> None:
 
     if not results:
         await message.reply(
-            " Не нашёл гайд . Попробуйте:\n"
+            "😔 Не нашёл гайд. Попробуйте:\n"
             "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
             "Или /all для всех категорий."
         )
@@ -98,7 +98,7 @@ async def _perform_search(message: types.Message, query: str) -> None:
     if best_score >= 75:
         guide_key = await _register_guide_meta(best)
         await message.reply(
-            f" Нашёл гайд в категории *{best['category']}*:\n\n"
+            f"✅ Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
             parse_mode="Markdown",
             reply_markup=make_rating_keyboard(guide_key),
@@ -107,7 +107,7 @@ async def _perform_search(message: types.Message, query: str) -> None:
 
     suggestions = [(d, sc) for d, sc in results if sc >= 55]
     if suggestions:
-        text = " Ничего точного, но есть похожие варианты:\n\n"
+        text = "🔎 Ничего точного, но есть похожие варианты:\n\n"
         kb = InlineKeyboardMarkup(inline_keyboard=[])
         now = time.time()
         for doc, _ in suggestions[:10]:
@@ -138,9 +138,9 @@ async def _perform_search(message: types.Message, query: str) -> None:
     thinking_msg = await message.reply("🔍 Не нашёл точного совпадения, спрашиваю AI...")
     ai_answer = await ask_ai(query, guide_context)
     if ai_answer:
-        reply_text = f" *AI-ответ по запросу:* _{query}_\n\n{ai_answer}"
+        reply_text = f"🤖 *AI-ответ по запросу:* _{query}_\n\n{ai_answer}"
         if guide_context:
-            reply_text += "\n\n Похожие гайды в базе:"
+            reply_text += "\n\n📚 Похожие гайды в базе:"
             for doc, score in results[:3]:
                 if score >= 20 and doc.get("url"):
                     reply_text += f"\n• [{doc['title']}]({doc['url']})"
@@ -150,7 +150,7 @@ async def _perform_search(message: types.Message, query: str) -> None:
     top_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:3]
     cat_hints = "".join(f"\n• /category `{c}`" for c, _ in top_cats)
     await thinking_msg.edit_text(
-        " Не нашёл гайд . Попробуйте:\n"
+        "😔 Не нашёл гайд. Попробуйте:\n"
         "• /guide atmosphere\n• /guide battery\n• /guide emunand\n\n"
         f"Популярные категории:{cat_hints}\n\nИли /all для всех категорий."
     )
@@ -162,10 +162,10 @@ async def _perform_search(message: types.Message, query: str) -> None:
 async def send_guide(message: types.Message, command: CommandObject) -> None:
     query = (command.args or "").strip()
     if not query:
-        await message.reply(" Укажите тему после команды, например: /guide battery")
+        await message.reply("💡 Укажите тему после команды, например: /guide battery")
         return
     if len(query) > 200:
-        await message.reply(" Запрос слишком длинный. Максимум 200 символов.")
+        await message.reply("❌ Запрос слишком длинный. Максимум 200 символов.")
         return
     await _perform_search(message, query)
 
@@ -175,14 +175,14 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
     query = (command.args or "").strip()
     if not query:
         await message.reply(
-            " Введи вопрос, например:\n"
+            "💡 Введи вопрос, например:\n"
             "`/aiguide как настроить emuNAND`\n"
             "`/aiguide установка игр atmosphere`",
             parse_mode="Markdown",
         )
         return
     if len(query) > 200:
-        await message.reply(" Запрос слишком длинный. Максимум 200 символов.")
+        await message.reply("❌ Запрос слишком длинный. Максимум 200 символов.")
         return
 
     await storage.add_to_search_history(str(message.from_user.id), query)
@@ -201,7 +201,7 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
         best = results[0][0]
         guide_key = await _register_guide_meta(best)
         await message.reply(
-            f" Нашёл гайд в категории *{best['category']}*:\n\n"
+            f"✅ Нашёл гайд в категории *{best['category']}*:\n\n"
             f"*{best['title']}*\n{best['url']}",
             parse_mode="Markdown",
             reply_markup=make_rating_keyboard(guide_key),
@@ -215,7 +215,7 @@ async def handle_aiguide(message: types.Message, command: CommandObject) -> None
     if ai_answer:
         reply_text = f"🤖 *AI-ответ по запросу:* _{query}_\n\n{ai_answer}"
         if guide_context:
-            reply_text += "\n\n Связанные гайды в базе:"
+            reply_text += "\n\n📚 Связанные гайды в базе:"
             for doc, score in results[:3]:
                 if score >= 30 and doc.get("url"):
                     reply_text += f"\n• [{doc['title']}]({doc['url']})"
@@ -242,7 +242,7 @@ async def ask_command(message: types.Message, command: CommandObject) -> None:
         )
         return
     if len(query) > 300:
-        await message.reply(" Запрос слишком длинный. Максимум 300 символов.")
+        await message.reply("❌ Запрос слишком длинный. Максимум 300 символов.")
         return
 
     user_id = str(message.from_user.id)
