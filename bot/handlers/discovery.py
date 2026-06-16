@@ -49,13 +49,13 @@ async def random_guide(message: types.Message, command: CommandObject) -> None:
     all_entries = [(t, u, c) for c, g in matching.items() for t, u in g.items() if u]
     if not all_entries:
         await message.reply(
-            " Гайды не найдены."
-            + (" Попробуй /random без аргументов или /all." if query else "")
+            "❌ Гайды не найдены."
+            + ("💡 Попробуй /random без аргументов или /all." if query else "")
         )
         return
     title, url, cat = random.choice(all_entries)
     await message.reply(
-        f" *Случайный гайд*\n\n Категория: {cat}\n [{title}]({url})",
+        f"🎲 *Случайный гайд*\n\n📁 Категория: {cat}\n[{title}]({url})",
         parse_mode="Markdown",
         disable_web_page_preview=True,
     )
@@ -70,7 +70,7 @@ async def new_guides(message: types.Message) -> None:
     )[:10]
     if not recent:
         await message.reply(
-            " История добавлений пока пуста.\n"
+            "📭 История добавлений пока пуста.\n"
             "Новые гайды будут отслеживаться — добавляй через /add\\_guide!",
             parse_mode="Markdown",
         )
@@ -87,7 +87,7 @@ async def new_guides(message: types.Message) -> None:
 @router.message(Command("top"))
 async def top_categories(message: types.Message) -> None:
     if not storage.GUIDES:
-        await message.reply(" База гайдов пуста ")
+        await message.reply("📭 База гайдов пуста")
         return
     sorted_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)[:10]
     total = sum(len(g) for g in storage.GUIDES.values())
@@ -103,7 +103,7 @@ async def top_categories(message: types.Message) -> None:
 async def category_guides(message: types.Message, command: CommandObject) -> None:
     query = (command.args or "").strip().lower()
     if not storage.GUIDES:
-        await message.reply(" База гайдов пуста ")
+        await message.reply("📭 База гайдов пуста")
         return
 
     if not query:
