@@ -1,7 +1,10 @@
 """Search command handlers: /guide, /aiguide, /ask."""
 import asyncio
 import hashlib
+import json as _json
 import logging
+import os
+import tempfile
 import time
 
 from aiogram import Router, types
@@ -15,6 +18,7 @@ from ..nlp import search_guides
 from ..services.ai import ask_ai, ask_ai_with_history
 from .ctx import DIALOG_CTX, DIALOG_CTX_TIME, _cleanup_dialog_ctx
 
+log = logging.getLogger(__name__)
 router = Router()
 
 # Per-user conversation history for /ask command
@@ -24,9 +28,60 @@ _ASK_HISTORY_MAX_TURNS = 10      # Keep last 10 turns (20 messages)
 _ASK_HISTORY_TTL = 1800          # Reset context after 30 min of inactivity (seconds)
 _ASK_HISTORY_TS: dict[str, float] = {}  # last-message timestamps per user
 
+# ── Disk persistence for /ask conversation history ───────────────────────────
+# Survives Railway restarts so users keep their conversation context.
+_HISTORY_DISK_FILE = "ask_history_cache.json"
+_history_disk_loaded = False
+
+
+def _load_history_from_disk() -> None:
+    """Load conversation history from disk on first access (lazy, called once)."""
+    global _history_disk_loaded
+    if _history_disk_loaded:
+        return
+    _history_disk_loaded = True
+    if not os.path.exists(_HISTORY_DISK_FILE):
+        return
+    try:
+        with open(_HISTORY_DISK_FILE, "r", encoding="utf-8") as f:
+            raw = _json.load(f)
+        now = time.time()
+        loaded = 0
+        for uid, entry in raw.items():
+            hist = entry.get("history", [])
+            ts = float(entry.get("ts", 0))
+            if isinstance(hist, list) and hist and now - ts < _ASK_HISTORY_TTL:
+                _ASK_HISTORY[uid] = hist
+                _ASK_HISTORY_TS[uid] = ts
+                loaded += 1
+        if loaded:
+            log.info("Restored /ask history for %d users from disk", loaded)
+    except Exception as exc:
+        log.warning("Failed to load ask history cache: %s", exc)
+
+
+def _save_history_to_disk() -> None:
+    """Atomically write active conversation histories to disk (sync, run in thread)."""
+    try:
+        now = time.time()
+        data = {
+            uid: {"history": hist, "ts": _ASK_HISTORY_TS.get(uid, now)}
+            for uid, hist in _ASK_HISTORY.items()
+            if now - _ASK_HISTORY_TS.get(uid, 0.0) < _ASK_HISTORY_TTL
+        }
+        dir_ = os.path.dirname(os.path.abspath(_HISTORY_DISK_FILE)) or "."
+        fd, tmp = tempfile.mkstemp(dir=dir_, suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            _json.dump(data, f, ensure_ascii=False)
+        os.replace(tmp, _HISTORY_DISK_FILE)
+        log.debug("Saved /ask history for %d users to disk", len(data))
+    except Exception as exc:
+        log.warning("Failed to save ask history cache: %s", exc)
+
 
 def _get_user_history(user_id: str) -> list[dict]:
-    """Return conversation history for user, evicting if stale."""
+    """Return conversation history for user, evicting if stale. Loads from disk on first call."""
+    _load_history_from_disk()
     ts = _ASK_HISTORY_TS.get(user_id, 0)
     if time.time() - ts > _ASK_HISTORY_TTL:
         _ASK_HISTORY.pop(user_id, None)
@@ -58,6 +113,8 @@ def cleanup_stale_ask_history() -> int:
     for uid in stale:
         _ASK_HISTORY.pop(uid, None)
         _ASK_HISTORY_TS.pop(uid, None)
+    if stale:
+        _save_history_to_disk()
     return len(stale)
 
 
@@ -261,6 +318,7 @@ async def ask_command(message: types.Message, command: CommandObject) -> None:
     if ai_answer:
         _append_history(user_id, "user", query)
         _append_history(user_id, "assistant", ai_answer)
+        asyncio.ensure_future(asyncio.to_thread(_save_history_to_disk))
         turn_count = len(_ASK_HISTORY.get(user_id, [])) // 2
         turn_badge = f" _[{turn_count} реплик в контексте]_" if turn_count > 1 else ""
         reply_text = f"🤖 *Ответ AI:*{turn_badge}\n\n{ai_answer}"
@@ -284,6 +342,7 @@ async def ask_reset_command(message: types.Message) -> None:
     """Reset the AI conversation context for the current user."""
     user_id = str(message.from_user.id)
     turns = _clear_user_history(user_id)
+    asyncio.ensure_future(asyncio.to_thread(_save_history_to_disk))
     if turns:
         await message.reply(
             f"🔄 Контекст разговора сброшен ({turns} реплик удалено).\n"

@@ -588,7 +588,7 @@ async def help_command(message: types.Message) -> None:
         "/fav remove `<номер>` — Удалить\n\n"
         " *Интерактивные функции:*\n"
         "💡 /tip — Случайный совет по Switch CFW\n"
-        " /quiz — Тест знаний по Switch CFW (42 вопроса)\n"
+        " /quiz — Тест знаний по Switch CFW (43 вопроса)\n"
         " /digest — Персональный дайджест гайдов\n"
         " /week — Недельная статистика и топ поисков\n"
         " /compare `<A>` vs `<B>` — Сравнить два инструмента/CFW\n"

@@ -36,6 +36,9 @@ generated_synonyms.json
 favorites.json
 ratings.json
 guides_meta.json
+search_history.json
+ai_response_cache.json
+ask_history_cache.json
 
 # OS
 .DS_Store
