@@ -31,8 +31,8 @@ async def start(message: types.Message) -> None:
     await message.reply(
         " *Ryazhenka Bot* — инженерный помощник по прошивке Nintendo Switch\n"
         f"{'─' * 35}\n"
-        f" Загружено гайдов: *{total}* в *{len(storage.GUIDES)}* категориях\n\n"
-        " *Основные команды:*\n"
+        f"📚 Загружено гайдов: *{total}* в *{len(storage.GUIDES)}* категориях\n\n"
+        "📋 *Основные команды:*\n"
         " /guide `<тема>` — найти гайд (fuzzy search)\n"
         " /aiguide `<текст>` — умный поиск (BM25 + fuzzy)\n"
         " /all — все категории\n"
@@ -48,7 +48,7 @@ async def show_all(message: types.Message) -> None:
     if not storage.GUIDES:
         await message.reply("📭 База гайдов пуста")
         return
-    text = " *Все категории* :\n\n"
+    text = "📂 *Все категории:*\n\n"
     total = 0
     for cat, guides in storage.GUIDES.items():
         total += len(guides)
@@ -65,7 +65,7 @@ async def guide_stats(message: types.Message) -> None:
         return
     total = sum(len(g) for g in storage.GUIDES.values())
     sorted_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)
-    text = f" *Статистика базы гайдов*\n{'─' * 30}\n Всего: *{total}*\n Категорий: *{len(storage.GUIDES)}*\n\n*Топ категорий:*\n"
+    text = f"📊 *Статистика базы гайдов*\n{'─' * 30}\n📚 Всего: *{total}*\n📁 Категорий: *{len(storage.GUIDES)}*\n\n*Топ категорий:*\n"
     for cat, guides in sorted_cats[:8]:
         bar = "█" * min(len(guides) // max(1, total // 20), 10)
         text += f"  {cat} — {len(guides)} {bar}\n"
@@ -82,7 +82,7 @@ async def recommend_repos(message: types.Message) -> None:
     if not repos:
         await message.reply("❌ Не удалось получить репозитории.")
         return
-    text = f" Рекомендуемые репозитории  {user}:\n\n"
+    text = f"🐙 Рекомендуемые репозитории {user}:\n\n"
     for name, url, desc in repos[:15]:
         text += f"• [{name}]({url}) — {desc}\n"
     await safe_send(message, text, disable_web_page_preview=True)
@@ -94,11 +94,11 @@ async def search_history_cmd(message: types.Message) -> None:
     history = storage.SEARCH_HISTORY.get(user_id, [])
     if not history:
         await message.reply(
-            " *История поиска пуста.*\n\nИспользуй /guide или /aiguide чтобы искать гайды.",
+            "📭 *История поиска пуста.*\n\nИспользуй /guide или /aiguide чтобы искать гайды.",
             parse_mode="Markdown",
         )
         return
-    text = " *Ваши последние запросы:*\n\n"
+    text = "🔍 *Ваши последние запросы:*\n\n"
     for i, entry in enumerate(reversed(history[-10:]), 1):
         q = entry.get("query", "")
         text += f"{i}. `/guide {q}`\n"
@@ -164,7 +164,7 @@ async def digest_command(message: types.Message) -> None:
     """Персональный дайджест: последние поиски + AI-рекомендации + топ гайдов."""
     user_id = str(message.from_user.id)
 
-    lines = [" *Ваш персональный дайджест*\n" + "─" * 35]
+    lines = ["📋 *Ваш персональный дайджест*\n" + "─" * 35]
 
     history = storage.SEARCH_HISTORY.get(user_id, [])
     recent_queries = []
@@ -292,7 +292,7 @@ async def compare_command(message: types.Message, command: CommandObject) -> Non
     args = (command.args or "").strip()
     if not args:
         await message.reply(
-            " *Сравнение инструментов Switch CFW*\n\n"
+            "⚖️ *Сравнение инструментов Switch CFW*\n\n"
             "Использование:\n"
             "`/compare emuNAND vs sysNAND`\n"
             "`/compare Atmosphere и Hekate`\n"
@@ -313,7 +313,7 @@ async def compare_command(message: types.Message, command: CommandObject) -> Non
 
     if not topic1 or not topic2:
         await message.reply(
-            f" Не удалось разобрать два инструмента из: «{args}»\n\n"
+            f"❌ Не удалось разобрать два инструмента из: «{args}»\n\n"
             "Пример: `/compare emuNAND vs sysNAND`",
             parse_mode="Markdown",
         )
@@ -335,7 +335,7 @@ async def compare_command(message: types.Message, command: CommandObject) -> Non
 
     if ai_answer:
         reply_text = (
-            f" *Сравнение: {topic1} vs {topic2}*\n"
+            f"⚖️ *Сравнение: {topic1} vs {topic2}*\n"
             f"{'─' * 35}\n\n"
             f"{ai_answer}"
         )
@@ -560,9 +560,9 @@ async def changelog_command(message: types.Message) -> None:
 @router.message(Command("help"))
 async def help_command(message: types.Message) -> None:
     text = (
-        " *Полный список команд* \n"
+        "📋 *Полный список команд*\n"
         f"{'─' * 35}\n"
-        " *Основные:*\n"
+        "🎮 *Основные:*\n"
         " /start — Приветствие и быстрые ссылки\n"
         " /all — Показать все категории\n"
         " /guide `<тема>` — Найти гайд (fuzzy + BM25)\n"
@@ -586,18 +586,18 @@ async def help_command(message: types.Message) -> None:
         "/fav — Показать избранное\n"
         "/fav add `<тема>` — Добавить гайд\n"
         "/fav remove `<номер>` — Удалить\n\n"
-        " *Интерактивные функции:*\n"
+        "✨ *Интерактивные функции:*\n"
         "💡 /tip — Случайный совет по Switch CFW\n"
         " /quiz — Тест знаний по Switch CFW (42 вопроса)\n"
         " /digest — Персональный дайджест гайдов\n"
         " /week — Недельная статистика и топ поисков\n"
         " /compare `<A>` vs `<B>` — Сравнить два инструмента/CFW\n"
         "📖 /howto `<тема>` — Пошаговые руководства (rcm/modchip/emummc/sigpatches/dns)\n\n"
-        " *Обратная связь:*\n"
+        "💬 *Обратная связь:*\n"
         "/feedback `<текст>` — Предложить новый гайд\n\n"
         " *Inline-режим:*\n"
         "Напиши `@botname запрос` в любом чате!\n\n"
-        " *Админ-команды:*\n"
+        "🛠️ *Админ-команды:*\n"
         "/sync, /add\\_guide, /remove\\_guide, /edit\\_guide, /list\\_guides, /admin\\_help\n"
     )
     await message.reply(text, parse_mode="Markdown")
