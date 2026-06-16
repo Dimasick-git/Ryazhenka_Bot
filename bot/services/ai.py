@@ -218,13 +218,40 @@ def _is_retryable(exc: Exception) -> bool:
     return False
 
 
+async def _call_anthropic(messages: list[dict], max_tokens: int) -> Optional[str]:
+    """Send a request to Claude with retry on transient errors. Returns text or None."""
+    client = _get_async_client()
+    if client is None:
+        return None
+    delay = _RETRY_BASE_DELAY
+    for attempt in range(1, _RETRY_ATTEMPTS + 1):
+        try:
+            resp = await client.messages.create(
+                model=AI_MODEL,
+                max_tokens=max_tokens,
+                system=[{"type": "text", "text": _SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+                messages=messages,
+            )
+            return resp.content[0].text.strip() if resp.content else None
+        except Exception as e:
+            if _is_retryable(e) and attempt < _RETRY_ATTEMPTS:
+                log.warning(
+                    "Claude attempt %d/%d (%s), retry in %.1fs",
+                    attempt, _RETRY_ATTEMPTS, type(e).__name__, delay,
+                )
+                await asyncio.sleep(delay)
+                delay *= 2
+                continue
+            log.warning("Claude request failed: %s", e)
+            return None
+    return None
+
+
 async def ask_ai(query: str, guide_context: str = "") -> Optional[str]:
-    """
-    Query Claude API with the user question + optional guide context.
-    Returns the AI answer string, or None if AI is unavailable/failed.
+    """Query Claude with the user question + optional guide context.
+
     Uses a two-layer cache (memory + disk) to reduce latency and API costs.
     Disk cache survives bot restarts on Railway.
-    Retries up to _RETRY_ATTEMPTS times on transient errors.
     """
     if not ANTHROPIC_API_KEY or not _anthropic_available:
         return None
@@ -232,49 +259,19 @@ async def ask_ai(query: str, guide_context: str = "") -> Optional[str]:
     cache_key = hashlib.sha256(f"{AI_MODEL}:{query}||{guide_context}".encode()).hexdigest()[:24]
     cached = _get_cached(cache_key)
     if cached:
-        log.debug("AI cache hit for query: %s", query[:40])
+        log.debug("AI cache hit: %s", query[:40])
         return cached
 
-    client = _get_async_client()
-    if client is None:
-        return None
-
     max_tokens = int(os.getenv("AI_MAX_TOKENS", "1024"))
-    delay = _RETRY_BASE_DELAY
-    for attempt in range(1, _RETRY_ATTEMPTS + 1):
-        try:
-            message = await client.messages.create(
-                model=AI_MODEL,
-                max_tokens=max_tokens,
-                system=[
-                    {
-                        "type": "text",
-                        "text": _SYSTEM_PROMPT,
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-                messages=[
-                    {"role": "user", "content": _build_user_prompt(query, guide_context)}
-                ],
-            )
-            answer = message.content[0].text.strip() if message.content else None
-            if answer:
-                _set_cached(cache_key, answer)
-                asyncio.ensure_future(_persist_disk_cache_async())
-                log.info("AI answer generated for: %s", query[:40])
-            return answer
-        except Exception as e:
-            if _is_retryable(e) and attempt < _RETRY_ATTEMPTS:
-                log.warning(
-                    "AI request attempt %d/%d failed (%s), retrying in %.1fs",
-                    attempt, _RETRY_ATTEMPTS, type(e).__name__, delay,
-                )
-                await asyncio.sleep(delay)
-                delay *= 2
-                continue
-            log.warning("AI request failed: %s", e)
-            return None
-    return None
+    answer = await _call_anthropic(
+        [{"role": "user", "content": _build_user_prompt(query, guide_context)}],
+        max_tokens,
+    )
+    if answer:
+        _set_cached(cache_key, answer)
+        asyncio.ensure_future(_persist_disk_cache_async())
+        log.info("AI answer generated: %s", query[:40])
+    return answer
 
 
 async def ask_ai_with_history(
@@ -291,52 +288,16 @@ async def ask_ai_with_history(
     if not ANTHROPIC_API_KEY or not _anthropic_available:
         return None
 
-    client = _get_async_client()
-    if client is None:
-        return None
-
-    # Keep last 10 messages (5 turns) to balance context quality with token budget
     trimmed = history[-10:] if len(history) > 10 else history
-
-    messages = []
-    for h in trimmed:
-        role = h.get("role", "user")
-        content = h.get("content", "")
-        if role in ("user", "assistant") and content:
-            messages.append({"role": role, "content": content})
-
-    # Append current query with optional guide context
+    messages = [
+        {"role": h["role"], "content": h["content"]}
+        for h in trimmed
+        if h.get("role") in ("user", "assistant") and h.get("content")
+    ]
     messages.append({"role": "user", "content": _build_user_prompt(query, guide_context)})
 
     max_tokens = int(os.getenv("AI_MAX_TOKENS", "1024"))
-    delay = _RETRY_BASE_DELAY
-    for attempt in range(1, _RETRY_ATTEMPTS + 1):
-        try:
-            message = await client.messages.create(
-                model=AI_MODEL,
-                max_tokens=max_tokens,
-                system=[
-                    {
-                        "type": "text",
-                        "text": _SYSTEM_PROMPT,
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-                messages=messages,
-            )
-            answer = message.content[0].text.strip() if message.content else None
-            if answer:
-                log.info("AI multi-turn answer generated for: %s", query[:40])
-            return answer
-        except Exception as e:
-            if _is_retryable(e) and attempt < _RETRY_ATTEMPTS:
-                log.warning(
-                    "AI multi-turn attempt %d/%d failed (%s), retrying in %.1fs",
-                    attempt, _RETRY_ATTEMPTS, type(e).__name__, delay,
-                )
-                await asyncio.sleep(delay)
-                delay *= 2
-                continue
-            log.warning("AI multi-turn request failed: %s", e)
-            return None
-    return None
+    answer = await _call_anthropic(messages, max_tokens)
+    if answer:
+        log.info("AI multi-turn answer: %s", query[:40])
+    return answer
