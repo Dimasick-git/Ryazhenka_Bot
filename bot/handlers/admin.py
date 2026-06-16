@@ -27,7 +27,7 @@ def _require_admin(handler):
     @functools.wraps(handler)
     async def wrapper(message: types.Message, *args, **kwargs):
         if not _is_admin(message.from_user.id):
-            await message.reply(" У вас нет прав на выполнение этой операции.")
+            await message.reply("🚫 У вас нет прав на выполнение этой операции.")
             return
         return await handler(message, *args, **kwargs)
     return wrapper
@@ -45,7 +45,7 @@ async def admin_help(message: types.Message) -> None:
         " /edit\\_guide `Кат | Назв | URL`\n"
         " /list\\_guides `[Категория]`\n\n"
         " *Данные и синхронизация:*\n"
-        " /sync — Синхронизация YouTube/GitHub\n"
+        "• /sync — Синхронизация YouTube/GitHub\n"
         " /purge\\_autoguides — Автогайды в архив\n"
         " /cleanup\\_duplicates — Удалить дубликаты\n"
         " /toggle\\_autoresolve — Авто-резолв ссылок\n\n"
@@ -123,7 +123,7 @@ async def ai_status_cmd(message: types.Message) -> None:
 @router.message(Command("sync"))
 @_require_admin
 async def manual_sync(message: types.Message, bot: Bot) -> None:
-    await message.reply(" Запускаю синхронизацию источников ...")
+    await message.reply("🔄 Запускаю синхронизацию источников...")
     try:
         summary = await sync_sources()
         invalidate_index()
@@ -134,7 +134,7 @@ async def manual_sync(message: types.Message, bot: Bot) -> None:
         )
     except Exception as e:
         logging.exception("Manual sync failed: %s", e)
-        await message.reply(f" Ошибка при синхронизации: {e}")
+        await message.reply(f"❌❌ Ошибка при синхронизации: {e}")
 
 
 @router.message(Command("add_guide"))
@@ -142,24 +142,24 @@ async def manual_sync(message: types.Message, bot: Bot) -> None:
 async def add_guide_cmd(message: types.Message, command: CommandObject) -> None:
     if not command.args:
         await message.reply(
-            " *Формат:* `/add_guide Категория | Название | URL`",
+            "📝 *Формат:* `/add_guide Категория | Название | URL`",
             parse_mode="Markdown",
         )
         return
     parts = [p.strip() for p in command.args.split("|")]
     if len(parts) < 3:
-        await message.reply(" Нужно три части через `|`: `Категория | Название | URL`", parse_mode="Markdown")
+        await message.reply("❌❌ Нужно три части через `|`: `Категория | Название | URL`", parse_mode="Markdown")
         return
     category, title, url = parts[0], parts[1], parts[2]
     if not url.startswith(("http://", "https://")):
-        await message.reply(" URL должен начинаться с `http://` или `https://`", parse_mode="Markdown")
+        await message.reply("❌ URL должен начинаться с `http://` или `https://`", parse_mode="Markdown")
         return
     from urllib.parse import urlparse as _urlparse
     _host = _urlparse(url).netloc.lower().removeprefix("www.")
     if not any(_host == d or _host.endswith("." + d) for d in ALLOWED_DOMAINS):
         allowed_str = ", ".join(ALLOWED_DOMAINS)
         await message.reply(
-            f" Домен `{_host}` не разрешён.\n\nДопустимые домены: `{allowed_str}`",
+            f"🚫 Домен `{_host}` не разрешён.\n\nДопустимые домены: `{allowed_str}`",
             parse_mode="Markdown",
         )
         return
@@ -167,7 +167,7 @@ async def add_guide_cmd(message: types.Message, command: CommandObject) -> None:
         storage.GUIDES[category] = {}
     if title in storage.GUIDES[category]:
         await message.reply(
-            f" Гайд `{title}` уже существует. Используйте `/edit_guide` для изменения.",
+            f"⚠️ Гайд `{title}` уже существует. Используйте `/edit_guide` для изменения.",
             parse_mode="Markdown",
         )
         return
@@ -190,15 +190,15 @@ async def add_guide_cmd(message: types.Message, command: CommandObject) -> None:
 @_require_admin
 async def remove_guide_cmd(message: types.Message, command: CommandObject) -> None:
     if not command.args:
-        await message.reply(" *Формат:* `/remove_guide Категория | Название`", parse_mode="Markdown")
+        await message.reply("📝 *Формат:* `/remove_guide Категория | Название`", parse_mode="Markdown")
         return
     parts = [p.strip() for p in command.args.split("|")]
     if len(parts) < 2:
-        await message.reply(" Нужно две части через `|`", parse_mode="Markdown")
+        await message.reply("❌ Нужно две части через `|`", parse_mode="Markdown")
         return
     category, title = parts[0], parts[1]
     if category not in storage.GUIDES or title not in storage.GUIDES.get(category, {}):
-        await message.reply(f" Гайд `{title}` не найден в `{category}`.", parse_mode="Markdown")
+        await message.reply(f"❌ Гайд `{title}` не найден в `{category}`.", parse_mode="Markdown")
         return
     del storage.GUIDES[category][title]
     if not storage.GUIDES[category]:
@@ -215,27 +215,27 @@ async def remove_guide_cmd(message: types.Message, command: CommandObject) -> No
 @_require_admin
 async def edit_guide_cmd(message: types.Message, command: CommandObject) -> None:
     if not command.args:
-        await message.reply(" *Формат:* `/edit_guide Категория | Название | Новый URL`", parse_mode="Markdown")
+        await message.reply("📝 *Формат:* `/edit_guide Категория | Название | Новый URL`", parse_mode="Markdown")
         return
     parts = [p.strip() for p in command.args.split("|")]
     if len(parts) < 3:
-        await message.reply(" Нужно три части через `|`", parse_mode="Markdown")
+        await message.reply("❌ Нужно три части через `|`", parse_mode="Markdown")
         return
     category, title, new_url = parts[0], parts[1], parts[2]
     if not new_url.startswith(("http://", "https://")):
-        await message.reply(" URL должен начинаться с `http://` или `https://`", parse_mode="Markdown")
+        await message.reply("❌ URL должен начинаться с `http://` или `https://`", parse_mode="Markdown")
         return
     from urllib.parse import urlparse as _urlparse
     _host = _urlparse(new_url).netloc.lower().removeprefix("www.")
     if not any(_host == d or _host.endswith("." + d) for d in ALLOWED_DOMAINS):
         allowed_str = ", ".join(ALLOWED_DOMAINS)
         await message.reply(
-            f" Домен `{_host}` не разрешён.\n\nДопустимые домены: `{allowed_str}`",
+            f"🚫 Домен `{_host}` не разрешён.\n\nДопустимые домены: `{allowed_str}`",
             parse_mode="Markdown",
         )
         return
     if category not in storage.GUIDES or title not in storage.GUIDES.get(category, {}):
-        await message.reply(f" Гайд `{title}` не найден в `{category}`.", parse_mode="Markdown")
+        await message.reply(f"❌ Гайд `{title}` не найден в `{category}`.", parse_mode="Markdown")
         return
     old_url = storage.GUIDES[category][title]
     storage.GUIDES[category][title] = new_url
@@ -263,11 +263,11 @@ async def list_guides_cmd(message: types.Message, command: CommandObject) -> Non
     if best is None:
         best = next((c for c in storage.GUIDES if category.lower() in c.lower()), None)
     if best is None:
-        await message.reply(f" Категория не найдена: `{category}`", parse_mode="Markdown")
+        await message.reply(f"❌ Категория не найдена: `{category}`", parse_mode="Markdown")
         return
     guides = storage.GUIDES[best]
     if not guides:
-        await message.reply(f" Категория `{best}` пуста.", parse_mode="Markdown")
+        await message.reply(f"📭 Категория `{best}` пуста.", parse_mode="Markdown")
         return
     lines = [f" *{best}* — {len(guides)} гайдов\n"]
     for i, (t, u) in enumerate(guides.items(), 1):
@@ -294,11 +294,11 @@ async def purge_autoguides(message: types.Message) -> None:
 @router.message(Command("cleanup_duplicates"))
 @_require_admin
 async def cleanup_duplicates_cmd(message: types.Message) -> None:
-    await message.reply(" Выполняю очистку дубликатов...")
+    await message.reply("🔍 Выполняю очистку дубликатов...")
     removed = await storage.dedupe_guides()
     if removed:
         invalidate_index()
-    await message.reply(f" Очистка завершена. Удалено дубликатов: {removed}")
+    await message.reply(f"✅ Очистка завершена. Удалено дубликатов: {removed}")
 
 
 @router.message(Command("toggle_autoresolve"))
@@ -318,11 +318,11 @@ async def yt_add(message: types.Message, command: CommandObject) -> None:
         await message.reply("Использование: /yt_add <channel_url_or_handle_or_UC_id>")
         return
     if arg in storage.YT_CHANNELS:
-        await message.reply("Канал уже в списке .")
+        await message.reply("⚠️ Канал уже в списке.")
         return
     storage.YT_CHANNELS.append(arg)
     await storage.save_yt_channels()
-    await message.reply(f"Добавил канал : {arg}")
+    await message.reply(f"✅ Добавил канал: {arg}")
 
 
 @router.message(Command("yt_remove"))
@@ -335,16 +335,16 @@ async def yt_remove(message: types.Message, command: CommandObject) -> None:
     try:
         storage.YT_CHANNELS.remove(arg)
         await storage.save_yt_channels()
-        await message.reply(f"Удалил канал : {arg}")
+        await message.reply(f"✅ Удалил канал: {arg}")
     except ValueError:
-        await message.reply("Канал не найден в списке .")
+        await message.reply("❌ Канал не найден в списке.")
 
 
 @router.message(Command("yt_list"))
 @_require_admin
 async def yt_list(message: types.Message) -> None:
     if not storage.YT_CHANNELS:
-        await message.reply("Список YT каналов пуст ")
+        await message.reply("📭 Список YT каналов пуст.")
         return
     text = "YouTube каналы в мониторинге :\n" + "\n".join(f"• {ch}" for ch in storage.YT_CHANNELS)
     await message.reply(text)
@@ -366,7 +366,7 @@ async def yt_prune_on(message: types.Message) -> None:
     storage.YT_PRUNE_REMOVED = True
     storage.SETTINGS["yt_prune_removed"] = True
     await storage.save_settings()
-    await message.reply(" Pruning включён ")
+    await message.reply("✅ Pruning включён")
 
 
 @router.message(Command("yt_prune_off"))
@@ -375,7 +375,7 @@ async def yt_prune_off(message: types.Message) -> None:
     storage.YT_PRUNE_REMOVED = False
     storage.SETTINGS["yt_prune_removed"] = False
     await storage.save_settings()
-    await message.reply(" Pruning выключен ")
+    await message.reply("✅ Pruning выключен")
 
 
 @router.message(Command("yt_set_limit"))
@@ -388,33 +388,33 @@ async def yt_set_limit(message: types.Message, command: CommandObject) -> None:
     storage.YT_KEEP_LIMIT = int(arg)
     storage.SETTINGS["yt_keep_limit"] = storage.YT_KEEP_LIMIT
     await storage.save_settings()
-    await message.reply(f" Новый лимит: {storage.YT_KEEP_LIMIT}")
+    await message.reply(f"✅ Новый лимит: {storage.YT_KEEP_LIMIT}")
 
 
 @router.message(Command("reload_guides"))
 @_require_admin
 async def reload_guides_cmd(message: types.Message) -> None:
     """Reload guides.json from disk at runtime without restarting the bot."""
-    await message.reply(" Перезагружаю guides.json ...")
+    await message.reply("🔄 Перезагружаю guides.json...")
     try:
         total = await storage.reload_guides()
         invalidate_index()
         warm_index()
         await message.reply(
             f" guides.json перезагружен.\n"
-            f" Категорий: {len(storage.GUIDES)}, гайдов: {total}"
+            f"📁 Категорий: {len(storage.GUIDES)}, гайдов: {total}"
         )
     except Exception as e:
         logging.exception("reload_guides failed: %s", e)
-        await message.reply(f" Ошибка при перезагрузке guides.json: {e}")
+        await message.reply(f"❌ Ошибка при перезагрузке guides.json: {e}")
 
 
 @router.message(Command("restart_polling"))
 @_require_admin
 async def restart_polling_cmd(message: types.Message, bot: Bot) -> None:
-    await message.reply(" Удаляю webhook и пытаюсь перезапустить...")
+    await message.reply("🔄 Удаляю webhook и пытаюсь перезапустить...")
     try:
         await bot.delete_webhook(drop_pending_updates=True)
     except Exception as e:
         logging.exception("Failed deleting webhook: %s", e)
-    await message.reply(" Удалил webhook. Перезапустите процесс бота на хосте, если нужно.")
+    await message.reply("✅ Удалил webhook. Перезапустите процесс бота на хосте, если нужно.")
