@@ -58,7 +58,7 @@ async def inline_guide_search(query: InlineQuery) -> None:
                 id=str(uuid.uuid4()),
                 title="Ничего не найдено",
                 input_message_content=InputTextMessageContent(
-                    message_text=f" По запросу <b>{escape_html(search_text)}</b> ничего не найдено.\nПопробуй /guide или /all в боте @Ryazhenkabestcfw",
+                    message_text=f"🔍 По запросу <b>{escape_html(search_text)}</b> ничего не найдено.\nПопробуй /guide или /all в боте @Ryazhenkabestcfw",
                     parse_mode="HTML",
                 ),
                 description="Попробуйте другой запрос",
