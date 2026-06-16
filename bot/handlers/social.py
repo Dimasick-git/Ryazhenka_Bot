@@ -41,12 +41,12 @@ async def favorites_command(message: types.Message, command: CommandObject) -> N
             return
         found = await asyncio.to_thread(search_guides, query, 1)
         if not found or found[0][1] < 30:
-            await message.reply(f" Гайд по запросу «{query}» не найден.")
+            await message.reply(f"❌ Гайд по запросу «{query}» не найден.")
             return
         entry = found[0][0]
         url = entry.get("url", "")
         if not url:
-            await message.reply(" У этого гайда нет ссылки.")
+            await message.reply("❌ У этого гайда нет ссылки.")
             return
         favs = storage.USER_FAVORITES.setdefault(user_id, [])
         if any(f["url"] == url for f in favs):
@@ -68,11 +68,11 @@ async def favorites_command(message: types.Message, command: CommandObject) -> N
         idx = int(num_str) - 1
         favs = storage.USER_FAVORITES.get(user_id, [])
         if idx < 0 or idx >= len(favs):
-            await message.reply(f" Нет гайда #{idx + 1} в избранном.")
+            await message.reply(f"❌ Нет гайда #{idx + 1} в избранном.")
             return
         removed = favs.pop(idx)
         await storage.save_favorites()
-        await message.reply(f" Удалено из избранного: *{removed['title']}*", parse_mode="Markdown")
+        await message.reply(f"🗑️ Удалено из избранного: *{removed['title']}*", parse_mode="Markdown")
         return
 
     await message.reply(
@@ -116,6 +116,6 @@ async def user_feedback(message: types.Message, command: CommandObject, bot: Bot
         except Exception:
             pass
     if sent:
-        await message.reply(" Спасибо! Предложение отправлено администраторам.")
+        await message.reply("✅ Спасибо! Предложение отправлено администраторам.")
     else:
         await message.reply(" Не удалось отправить.\nНапиши напрямую: @Ryazhenkabestcfw")
