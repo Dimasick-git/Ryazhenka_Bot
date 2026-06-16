@@ -37,7 +37,7 @@ async def start(message: types.Message) -> None:
         " /aiguide `<текст>` — умный поиск (BM25 + fuzzy)\n"
         " /all — все категории\n"
         " /help — полный список команд\n\n"
-        " *Выберите категорию ниже:*",
+        "📂 *Выберите категорию ниже:*",
         parse_mode="Markdown",
         reply_markup=create_categories_keyboard(),
     )
@@ -46,7 +46,7 @@ async def start(message: types.Message) -> None:
 @router.message(Command("all"))
 async def show_all(message: types.Message) -> None:
     if not storage.GUIDES:
-        await message.reply(" База гайдов пуста ")
+        await message.reply("📭 База гайдов пуста")
         return
     text = " *Все категории* :\n\n"
     total = 0
@@ -61,7 +61,7 @@ async def show_all(message: types.Message) -> None:
 @router.message(Command("stats"))
 async def guide_stats(message: types.Message) -> None:
     if not storage.GUIDES:
-        await message.reply(" База гайдов пуста ")
+        await message.reply("📭 База гайдов пуста")
         return
     total = sum(len(g) for g in storage.GUIDES.values())
     sorted_cats = sorted(storage.GUIDES.items(), key=lambda x: len(x[1]), reverse=True)
@@ -77,10 +77,10 @@ async def guide_stats(message: types.Message) -> None:
 @router.message(Command("recommend"))
 async def recommend_repos(message: types.Message) -> None:
     user = _recommend_user()
-    await message.reply(f" Получаю публичные репозитории  {user}...")
+    await message.reply(f"🔄 Получаю публичные репозитории {user}...")
     repos = await fetch_github_repos(user, limit=20)
     if not repos:
-        await message.reply(" Не удалось получить репозитории.")
+        await message.reply("❌ Не удалось получить репозитории.")
         return
     text = f" Рекомендуемые репозитории  {user}:\n\n"
     for name, url, desc in repos[:15]:
@@ -319,7 +319,7 @@ async def compare_command(message: types.Message, command: CommandObject) -> Non
         )
         return
 
-    thinking_msg = await message.reply(f" Сравниваю *{topic1}* и *{topic2}*...", parse_mode="Markdown")
+    thinking_msg = await message.reply(f"⚖️ Сравниваю *{topic1}* и *{topic2}*...", parse_mode="Markdown")
 
     prompt = (
         f"Сравни два инструмента/понятия Nintendo Switch CFW: «{topic1}» и «{topic2}».\n"
