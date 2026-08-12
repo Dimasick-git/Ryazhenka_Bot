@@ -25,10 +25,10 @@ jobs:
 
     steps:
       - name: ⬇ Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name:  Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
@@ -68,13 +68,13 @@ jobs:
 
     steps:
       - name: ⬇ Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name:  Deploy via Railway CLI
         uses: bervProject/railway-deploy@main
         with:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: ${{ vars.RAILWAY_SERVICE || 'ryazhenka-bot' }}
+          service: ${{ vars.RAILWAY_SERVICE || 'Dimasick-git' }}
 
       - name:  Deploy complete
         run: echo " Successfully deployed to Railway!"
